@@ -1,9 +1,20 @@
+import pytest
 from SlideLoader import Config
 # unit test cases for the config submodule
 
-class TestConfig(unittest.TestCase):
-    # Read a config file
-    # fail (gracefully? not so gracefully?) if file absent
-    # output a dictionary for usage
-    # complain if an important setting missing
-    # complain loudly if config file malformed
+# test script
+print("Fails if no config passed.")
+with pytest.raises(IOError):
+    cnf0 = Config("")
+    # config object
+print("Successfully creates from a file. ")
+cnf = Config("example_config.yml")
+
+print ("Reads the file without incident.")
+config = cnf.read()
+
+print ("api_key translates ok from example")
+assert config['api_key'] == "ABC123"
+
+print ("reads globals ok")
+assert config['global']['study'] == "TEST01"

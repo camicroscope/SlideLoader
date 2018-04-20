@@ -1,0 +1,13 @@
+[{
+    "UID": 1,
+    "case": "ALICE",
+    "local_file": "alice1.svs",
+    "file": "/data/img/alice1.svs",
+    "useless": "likesapple"
+}, {
+    "UID": 2,
+    "case": "BOB",
+    "local_file": "bob2.svs",
+    "file": "/data/img/bob2.svs",
+    "useless": "likesorange"
+}]

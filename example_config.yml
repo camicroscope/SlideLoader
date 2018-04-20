@@ -1,0 +1,12 @@
+api_key: ABC123
+exist_check_url: /something/path/test.php
+exist_check_params:
+   - UID
+exist_check_test: []
+post_url: /something/path/post.php
+thread_limit: 20
+local_file_field: local_file
+global:
+  study: TEST01
+ignore:
+  - useless

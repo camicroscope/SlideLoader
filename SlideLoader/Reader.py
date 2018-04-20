@@ -9,10 +9,9 @@ class Reader(object):
 
     def read(self):
         if self.filetype == "csv":
-            with open(self.path) as f:
-                reader = csv.reader(f, skipinitialspace=True)
-                header = next(reader)
-                return [dict(zip(header, map(int, row))) for row in reader]
+            with open(self.path, 'r') as f:
+                reader = csv.DictReader(f)
+                return [row for row in reader]
         elif self.filetype == "json":
             data = json.load(open(self.path))
         else:

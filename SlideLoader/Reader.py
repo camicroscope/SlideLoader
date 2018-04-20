@@ -8,11 +8,11 @@ class Reader(object):
         self.filetype = filetype.lower()
 
     def read(self):
-        if self.filetype == "csv":
-            with open(self.path, 'r') as f:
+        with open(self.path, 'r') as f:
+            if self.filetype == "csv":
                 reader = csv.DictReader(f)
                 return [row for row in reader]
-        elif self.filetype == "json":
-            data = json.load(open(self.path))
+            elif self.filetype == "json":
+                data = json.load(f)
         else:
             raise TypeError(self.filetype + " type not supported for manifests")

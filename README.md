@@ -16,3 +16,5 @@ SlideLoader has five main components: Config, Controller, Extractor, Reader, and
 * existence check, check_url and exist_check_test
 * a description of the config fields
 * better default config while at it
+* dry_run
+* image thumbnail generation

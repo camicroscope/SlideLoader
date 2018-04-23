@@ -12,6 +12,7 @@ class Requester(object):
         self.existsRegex = self.confing.get("exist_check_test", "[]")
         self.postUrl = self.config['post_url']
         self.record_manifest_key = self.config.get("record_manifest_key", self.record_uri_key)
+        self.dry_run = self.config.get("dry_run", None)
 
     def request(self, payLoad):
         exists = False
@@ -29,10 +30,14 @@ class Requester(object):
         if not exists:
             headers = {'api_key': self.apiKey}
             url = self.postUrl
-            r = requests.post(url, json=payLoad, headers=headers)
-            # log if error
-            if r.status_code < 300:
-                # success
+            if !self.dry_run:
+                r = requests.post(url, json=payLoad, headers=headers)
+                # log if error
+                if r.status_code < 300:
+                    # success
+                else:
+                    print("ERROR :"  + url )
+                return r.text
             else:
-                print("ERROR :"  + url )
-            return r.text
+                # just say what we're doing
+                print("POST: " + url + str(payLoad) + str(headers))

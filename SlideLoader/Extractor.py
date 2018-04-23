@@ -1,4 +1,4 @@
-import openslide
+import openslide, time, hashlib
 # get slide metadata. look at openslide
 
 
@@ -6,10 +6,10 @@ class Extractor(object):
     def __init__(self, filename):
         self.filename = filename
 
-    def _md5(self,fileName):
+    def _md5(self):
         m = hashlib.md5()
         blocksize = 2**20
-        with open(fileName, "rb") as f:
+        with open(self.fileName, "rb") as f:
             while True:
                 buf = f.read(blocksize)
                 if not buf:
@@ -19,24 +19,17 @@ class Extractor(object):
     # given dict of slide info from reader
     # return something a thread can nicely use to do requests
 
-    openslide.OpenSlide(self.filename)
-    # what do we need from openslide?
-    """    {
-    	"_id" : ObjectId("5aaaa40ae4b094e3adb0527b"),
-    	"mpp-x" : 0.499,
-    	"height" : 32893,
-    	"mpp-y" : 0.499,
-    	"filename" : "/data/images/CMU-1-JP2K-33005-274ju.svs",
-    	"level_count" : 3,
-    	"timestamp" : 1521132552.9331686,
-    	"subject_id" : "CMU1jp2k",
-    	"md5sum" : "b08f34f9d16c49e2c4a5bc91c4597fd1",
-    	"file-location" : "/data/images/CMU-1-JP2K-33005-274ju.svs",
-    	"mpp_y" : 0.499,
-    	"case_id" : "CMU1jp2k",
-    	"mpp_x" : 0.499,
-    	"width" : 46000,
-    	"objective" : 20,
-    	"study_id" : "default",
-    	"vendor" : "aperio"
-    }"""
+    def metadata(self):
+        metadata = {}
+        slideData = openslide.OpenSlide(self.filename)
+        metadata['mpp-x'] = slideData.get("tiff.XResolution", None)
+        metadata['mpp-y'] = slideData.get("tiff.YResolution", None)
+        metadata['height'] = slideData.get("openslide.level[0].height", None)
+        metadata['width'] = slideData.get("openslide.level[0].width", None)
+        metadata['vendor'] = slideData.get("openslide.vendor", None)
+        metadata['level_count'] = int(slideData.get('level_count', 1))
+        metadata['objective'] = float(slideData.get("aperio.AppMag", None))
+        metadata['md5sum'] = self._md5()
+        metadata['timestamp'] = time.time()
+        # TODO sanity check
+        return metadata

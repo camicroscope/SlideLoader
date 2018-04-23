@@ -1,5 +1,4 @@
-import csv
-import json
+import csv, json
 # convert the file to a list of dicts
 
 class Reader(object):

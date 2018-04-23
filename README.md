@@ -9,3 +9,10 @@ SlideLoader has five main components: Config, Controller, Extractor, Reader, and
 * *Extractor* extracts slide file metadata
 * *Controller* Launches instances of requestor with one slide each
 * *Requestor* Checks if a slide with the assigned id exists, and posts those which do not
+
+
+# TODO, documentation
+* precedence of metadata, manifest, and global
+* existence check, check_url and exist_check_test
+* a description of the config fields
+* better default config while at it

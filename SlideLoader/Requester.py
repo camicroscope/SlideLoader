@@ -1,4 +1,4 @@
-import requests
+import requests, re
 
 class Requester(object):
     # using options...
@@ -7,17 +7,20 @@ class Requester(object):
         self.config = config
         # relevant config options
         self.checkUrl = self.config['exist_check_url']
-        self.checkKey = self.config.get("exist_check_param", "id")
+        self.record_uri_key = self.config.get("record_uri_key", "id")
         self.apiKey = self.config.get("api_key", "")
+        self.existsRegex = self.confing.get("exist_check_test", "[]")
+        self.postUrl = self.config['post_url']
+        self.record_manifest_key = self.config.get("record_manifest_key", self.record_uri_key)
 
     def request(self, payLoad):
         exists = False
         if self.checkUrl:
-            check = requests.get(self.checkUrl + "?" + self.checkKey + "=" + payLoad['tissueID'] +"&api_key=" + self.apiKey)
-            check.text
-            if blah:
+            url = self.checkUrl + "?" + self.record_uri_key + "=" + payLoad[self.record_manifest_key] +"&api_key=" + self.apiKey
+            check = requests.get(url)
+            if re.search(self.existsRegex, check.text) is not None:
                 exists = True
-                # log it
+                print (payLoad[self.record_manifest_key]" exists already")
             else:
                 exists = False
         else :
@@ -25,7 +28,11 @@ class Requester(object):
         # if not, post to post route
         if not exists:
             headers = {'api_key': self.apiKey}
-            requests.post(url, json=payLoad, headers=headers)
+            url = self.postUrl
+            r = requests.post(url, json=payLoad, headers=headers)
             # log if error
-            r.status_code
-            # (error log should be usable as a retry manifest)
+            if r.status_code < 300:
+                # success
+            else:
+                print("ERROR :"  + url )
+            return r.text

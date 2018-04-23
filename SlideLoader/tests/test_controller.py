@@ -4,3 +4,4 @@ from SlideLoader import Controller
 # take in options
 # complain if options incomplete
 # creates objects needed for requester instances
+pass

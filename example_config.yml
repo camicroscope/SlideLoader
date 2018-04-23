@@ -4,6 +4,8 @@ record_uri_key: UID
 record_manifest_key: caseId
 exist_check_test: []
 post_url: /something/path/post.php
+thumbnail_path: /data/images/thumbnails
+thumbnail_size: 100
 thread_limit: 20
 local_file_field: local_file
 global:

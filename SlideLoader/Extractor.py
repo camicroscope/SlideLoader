@@ -6,7 +6,8 @@ class Extractor(object):
     def __init__(self, config):
         self.config = config
         # relevant sections
-        self.fileKey
+        self.thumbnail_size = self.config.get("thumbnail_size", None)
+        self.thumbnail_path = self.config.get("thumbnail_path", "./")
 
     def _md5(self, filename):
         m = hashlib.md5()
@@ -19,7 +20,7 @@ class Extractor(object):
                 m.update(buf)
         return m.hexdigest()
 
-    def metadata(self, record):
+    def metadata(self, filename):
         metadata = {}
         slideData = openslide.OpenSlide(filename)
         metadata['mpp-x'] = slideData.get("tiff.XResolution", None)
@@ -31,5 +32,11 @@ class Extractor(object):
         metadata['objective'] = float(slideData.get("aperio.AppMag", None))
         metadata['md5sum'] = self._md5(filename)
         metadata['timestamp'] = time.time()
+        if self.thumbnail_path:
+            self.gen_thumbnail(filename, slideData)
         # TODO sanity check
         return metadata
+
+    def gen_thumbnail(self, filename, slideData, size, imgtype="png"):
+        dest = thumbnail_path + "/" + filename + "." + imgtype
+        slideData.get_thumbnail(size).save(dest, imgtype.upper())

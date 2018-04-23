@@ -2,9 +2,9 @@ import csv, json
 # convert the file to a list of dicts
 
 class Reader(object):
-    def __init__(self, path, filetype="csv"):
+    def __init__(self, manifest, config):
         self.path = path
-        self.filetype = filetype.lower()
+        self.filetype = config.get("filetype", "csv").lower()
 
     def read(self):
         with open(self.path, 'r') as f:

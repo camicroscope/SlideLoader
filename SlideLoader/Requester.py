@@ -21,7 +21,7 @@ class Requester(object):
             check = requests.get(url)
             if re.search(self.existsRegex, check.text) is not None:
                 exists = True
-                print (payLoad[self.record_manifest_key]" exists already")
+                print (payLoad[self.record_manifest_key] + " exists already")
             else:
                 exists = False
         else :
@@ -30,7 +30,7 @@ class Requester(object):
         if not exists:
             headers = {'api_key': self.apiKey}
             url = self.postUrl
-            if !self.dry_run:
+            if not self.dry_run:
                 r = requests.post(url, json=payLoad, headers=headers)
                 # log if error
                 if r.status_code < 300:

@@ -13,5 +13,5 @@ class Reader(object):
                 return [row for row in reader]
             elif self.filetype == "json":
                 data = json.load(f)
-        else:
-            raise TypeError(self.filetype + " type not supported for manifests")
+            else:
+                raise TypeError(self.filetype + " type not supported for manifests")

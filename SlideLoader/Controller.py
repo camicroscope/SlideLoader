@@ -1,4 +1,5 @@
 from multiprocessing.pool import ThreadPool
+from SlideLoader import Config, Extractor, Reader, Requester
 
 class Controller(object):
     def __init__(self, cnf_file, manifest_file):
@@ -14,10 +15,18 @@ class Controller(object):
     def _run_one(self, record):
         # TODO note the order of this merge in doc
         # metadata is overwritten by manifest, both overwritten by globals in config
-        payLoad = self.extractor.extract(record[self.fileKey])
+        payLoad = self.extractor.metadata(record[self.fileKey])
         payLoad.update(record)
         payLoad.update(self.globals)
         return self.requester.request(payLoad)
 
+    def _one_thumbnail(self, record):
+        return self.extractor.metadata(record[self.fileKey])
+
     def run(self):
         results = ThreadPool(self.threadLimit).imap_unordered(self._run_one, self.reader.read())
+        return results
+
+    def thumbnails(self):
+        results = ThreadPool(self.threadLimit).imap_unordered(self._one_thumbnail, self.reader.read())
+        return results

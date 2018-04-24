@@ -1,6 +1,26 @@
 from multiprocessing.pool import ThreadPool
 from SlideLoader import Config, Extractor, Reader, Requester
 
+"""
+Controller: Handles processing of slides
+Can be used for thumbnail generation, metadata loading, or both.
+
+Args:
+    cnf_file (str): the file path of the configuration file
+    manifest_file (str): the file path of the manifest (list of images)
+
+Runs multithreaded, where each thread extracts slide metadata, generates thumbnails, and posts results
+
+Config variables used:
+    globals (dict): fields to use to replace missing data in the manifest or metadata
+    threadLimit (int): the max number of threads in the thread pool
+    fileKey: (str): the key in the manifest which represents a file's local location
+
+Beware that dependent classes (may) use other configuration options.
+
+The request sent is based on the information provided from metadata, the manifest, and config globals.
+Metadata is overwritten by manifest data, and both are overwritten by globals in config.
+"""
 class Controller(object):
     def __init__(self, cnf_file, manifest_file):
         self.config = Config(cnf_file).read()
@@ -14,7 +34,7 @@ class Controller(object):
 
     def _run_one(self, record):
         # TODO note the order of this merge in doc
-        # metadata is overwritten by manifest, both overwritten by globals in config
+        #
         payLoad = self.extractor.metadata(record[self.fileKey])
         payLoad.update(record)
         payLoad.update(self.globals)

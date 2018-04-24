@@ -1,5 +1,15 @@
 import yaml
 
+"""
+Config:
+Reads a configuration file for slide loading.
+
+Args:
+    filepath (str): the path of the configuration type
+    filetype (str): the parsing engine to use, default yaml
+
+Run with .read() to get a dictionary of configuration variables.
+"""
 class Config(object):
     def __init__(self, filepath, filetype="yaml"):
         self.filepath = filepath

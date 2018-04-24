@@ -1,7 +1,7 @@
 import SlideLoader
 import sys
 
-if __name__ == "__main__":
+def main():
     print("this should run")
     print(sys.argv)
     if len(sys.argv[1]) < 4:
@@ -16,3 +16,6 @@ if __name__ == "__main__":
         a.thumbnails()
     else:
         raise RuntimeError("Unrecognized mode")
+
+if __name__ == "__main__":
+    main()

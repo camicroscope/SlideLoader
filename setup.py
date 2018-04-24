@@ -1,4 +1,7 @@
-from distutils.core import setup
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
 
 setup(name='SlideLoader',
       version='0.0.1',
@@ -14,4 +17,7 @@ setup(name='SlideLoader',
                    'License :: OSI Approved :: Apache Software License'],
       long_description=open('README.md', 'r').read(),
       packages=['SlideLoader'],
+      entry_points = {
+        'console_scripts': ['SlideLoad=SlideLoader.__main__'],
+        }
 )

@@ -9,8 +9,10 @@ Args:
 
 Designed to be runnable multithreaded via .metadata (or .thumbnail) which works on one slide (per call)
 
-.metadata returns a dictionary of extracted metadata
+.metadata returns a a stauts of "success" if successful, and the payload dictionary, in another dictionary
 if thumbnail_size is set, it also generates a thumbnail
+
+
 
 Config variables used:
     exist_check_url (str): the url to check
@@ -18,7 +20,7 @@ Config variables used:
     record_manifest_key (str): the key of the payload object to use as id for testing
     exist_check_test (str): a regex that the result of the check url is compared against
     api_key (str): the api key, default none
-    post_url (str):
+    post_url (str): the
     dry_run (bool): prints payload and target url instead of posting
 
 """
@@ -38,6 +40,7 @@ class Requester(object):
         self.dry_run = self.config.get("dry_run", None)
 
     def request(self, payLoad):
+        status = "incomplete"
         exists = False
         if self.checkUrl:
             url = self.checkUrl + "?" + self.record_uri_key + "=" + payLoad[self.record_manifest_key] +
@@ -46,10 +49,10 @@ class Requester(object):
             check = requests.get(url)
             if re.search(self.existsRegex, check.text) is not None:
                 exists = True
-                print (payLoad[self.record_manifest_key] + " exists already")
+                status = "exists"
             else:
                 exists = False
-        else :
+        else:
             exists = False
         # if not, post to post route
         if not exists:
@@ -59,10 +62,13 @@ class Requester(object):
                 r = requests.post(url, json=payLoad, headers=headers)
                 # log if error
                 if r.status_code < 300:
-                    # success
+                    status = "success"
                 else:
                     print("ERROR :"  + url )
-                return r.text
+                    status = r.status_code
             else:
                 # just say what we're doing
+                status = "success"
                 print("POST: " + url + str(payLoad) + str(headers))
+
+        return {"status": status, "payLoad": payLoad}

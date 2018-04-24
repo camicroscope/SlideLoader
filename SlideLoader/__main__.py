@@ -11,7 +11,8 @@ def main():
     manifest_file = sys.argv[3]
     a = SlideLoader.Controller(cnf_file, manifest_file)
     if mode.lower() == "run":
-        a.run()
+        res = a.run()
+        print(len(res['failed']) + " failed and " + len(res['successful']) + " successful")
     elif mode.lower() == "thumbnail":
         a.thumbnails()
     else:

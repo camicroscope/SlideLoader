@@ -43,7 +43,7 @@ class Requester(object):
         status = "incomplete"
         exists = False
         if self.checkUrl:
-            url = self.checkUrl + "?" + self.record_uri_key + "=" + payLoad[self.record_manifest_key] +
+            url = self.checkUrl + "?" + self.record_uri_key + "=" + payLoad[self.record_manifest_key]
             if self.apiKey:
                 url = url + "&api_key=" + self.apiKey
             check = requests.get(url)

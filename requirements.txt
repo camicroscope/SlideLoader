@@ -1,4 +1,3 @@
 requests
-openslide
+openslide-python
 hashlib
-PyYAML

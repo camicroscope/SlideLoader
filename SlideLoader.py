@@ -3,8 +3,8 @@ from multiprocessing.pool import ThreadPool
 # GLOBALS (for now)
 config={'thumbnail_size': 100, 'thread_limit': 20}
 api_key = "0401fcb9-f513-47c2-aed1-29fd9dab2e24"
-check_url = "http://camicroscope-bindaas:9099/services/Camicroscope_DataLoader/DataLoader/query/getFileLocationByIID?api_key=" + api_key + "&TCGAId="
-post_url = "http://camicroscope-bindaas:9099/services/Camicroscope_DataLoader/DataLoader/submit/json"
+check_url = "http://quip-data:9099/services/Camicroscope_DataLoader/DataLoader/query/getFileLocationByIID?api_key=" + api_key + "&TCGAId="
+post_url = "http://quip-data:9099/services/Camicroscope_DataLoader/DataLoader/submit/json"
 manifest_path='manifest.csv'
 
 

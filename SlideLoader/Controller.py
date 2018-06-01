@@ -56,8 +56,8 @@ class Controller(object):
         retry_list = self.reader.read()
         while retry:
             results = ThreadPool(self.threadLimit).imap_unordered(self._run_one, retry_list)
-            successful = successful + [res['payLoad'] for res in results where res['status']=="success"]
-            retry_list = [res['payLoad'] for res in results where not res['status']=="success"]
+            successful = successful + [res['payLoad'] for res in results if res['status']=="success"]
+            retry_list = [res['payLoad'] for res in results if not res['status']=="success"]
             i = i + 1
             retry = i < self.retry_limit and len(retry_list) > 0
         return {"successful": successful, "failed": retry_list}

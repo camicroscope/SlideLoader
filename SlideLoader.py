@@ -72,4 +72,4 @@ with open(manifest_path, 'r') as f:
     thread_limit = config.get('thread_limit', 10)
     # run process on each image
     res = ThreadPool(thread_limit).imap_unordered(process, manifest)
-    print(json.dumps(res))
+    print(json.dumps([r for r in res]))

@@ -9,6 +9,7 @@ app = flask.Flask(__name__)
 
 # where to put and get slides
 app.config['UPLOAD_FOLDER'] = "/data/images/"
+app.config['SECRET_KEY'] = os.urandom(24)
 
 ALLOWED_EXTENSIONS = set(['svs','tif'])
 
@@ -57,23 +58,32 @@ def getMetadataList(filenames):
 ## routes
 
 # upload, file as file:
-@app.route('/upload', methods=['POST'])
+@app.route('/upload', methods=['POST', "GET"])
 def upload_file():
+    if flask.request.method == "GET":
+        return '''
+        <!doctype html>
+        <title>Upload new File</title>
+        <h1>Upload new File</h1>
+        <form method=post enctype=multipart/form-data>
+          <input type=file name=file>
+          <input type=submit value=Upload>
+        </form>
+        '''
     # check if the post request has the file part
     if 'file' not in flask.request.files:
-        flask.flash("No file part")
-        return flask.redirect(request.url)
+        return flask.Response('No file uploaded', status=500)
     file = flask.request.files['file']
-    # if user does not select file, browser also
-    # submit an empty part without filename
     if file.filename == '':
-        flash('No selected file')
-        return flask.redirect(request.url)
+        return flask.Response('No filename uploaded', status=500)
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath, filename)
-        return filepath
+        if not os.path.isfile(filepath):
+            file.save(filepath)
+            return filepath
+        else:
+            return "NOT UPLOADED: Already Exists"
 
 @app.route("/test", methods=['GET'])
 def testRoute():

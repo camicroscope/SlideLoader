@@ -21,6 +21,10 @@ RUN cp test_imgs/* /data/images/
 RUN pip3 install -r requirements.txt
 
 
-EXPOSE 4000
+EXPOSE 5000
 
-CMD gunicorn -w 4 -b 0.0.0.0:4000 SlideServer:app
+# debug/dev only
+ENV FLASK_APP SlideServer.py
+CMD python -m flask run --host=0.0.0.0
+
+#CMD gunicorn -w 4 -b 0.0.0.0:4000 SlideServer:app

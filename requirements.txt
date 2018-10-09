@@ -1,3 +1,4 @@
-requests
 openslide-python
-hashlib
+flask
+Werkzeug
+flask-cors

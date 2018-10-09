@@ -1,5 +1,17 @@
 # SlideLoader
-Tool for loading slide metadata for caMicroscope
+Tool for loading slides and getting slide metadata using openslide
 
 ## Usage
-The posted result is a combination of the data in the manifest and the metadata from openslide. Set the api key, urls, and manifest location in the code for now.
+
+### Upload
+
+### Get a Single Image's Metadata
+
+See, for example, http://\<service url base\>/data/one/\<slide filename\>
+
+This returns the metadata for the given slide.
+### Get metadata for a list of image
+
+See, for example http://\<service url base\>/data/many/["\<slide1_filename\>", "\<slide2_filename\>"]
+
+This returns the metadata for each slide.

@@ -3,9 +3,11 @@ import flask
 import os
 import json
 import hashlib
+import flask_cors
 from werkzeug.utils import secure_filename
 
 app = flask.Flask(__name__)
+flask_cors.CORS(app)
 
 # where to put and get slides
 app.config['UPLOAD_FOLDER'] = "/data/images/"
@@ -72,18 +74,22 @@ def upload_file():
         '''
     # check if the post request has the file part
     if 'file' not in flask.request.files:
-        return flask.Response('No file uploaded', status=500)
+        return flask.Response(json.dumps({"error": "NOT UPLOADED: No File"}), status=400)
     file = flask.request.files['file']
-    if file.filename == '':
-        return flask.Response('No filename uploaded', status=500)
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
+    filename = flask.request.form["filename"] or file.filename
+    if filename == '':
+        return flask.Response(json.dumps({"error": "NOT UPLOADED: No Filename Given"}), status=400)
+    if file and allowed_file(filename):
+        filename = secure_filename(filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         if not os.path.isfile(filepath):
             file.save(filepath)
-            return filepath
+            return json.dumps({"file":filepath})
         else:
-            return "NOT UPLOADED: Already Exists"
+            return flask.Response(json.dumps({"error": "NOT UPLOADED: File Exists"}), status=400)
+    else:
+        return flask.Response(json.dumps({"error": "NOT UPLOADED: Server Error"}), status=500)
+
 
 @app.route("/test", methods=['GET'])
 def testRoute():

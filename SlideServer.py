@@ -74,7 +74,7 @@ def upload_file():
         </form>
         '''
     # check if the post request has the file part
-    print(flask.request.files, file=sys.stderr)
+    print(flask.request.headers['conent-type'], file=sys.stderr)
     if 'file' not in flask.request.files:
         return flask.Response(json.dumps({"error": "NOT UPLOADED: No File"}), status=400)
     file = flask.request.files['file']

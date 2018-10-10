@@ -21,7 +21,7 @@ RUN cp test_imgs/* /data/images/
 RUN pip3 install -r requirements.txt
 
 
-EXPOSE 5000
+EXPOSE 4000
 
 # debug/dev only
 # ENV FLASK_APP SlideServer.py

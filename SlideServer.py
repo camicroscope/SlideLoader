@@ -4,6 +4,7 @@ import os
 import json
 import hashlib
 import flask_cors
+import sys
 from werkzeug.utils import secure_filename
 
 app = flask.Flask(__name__)
@@ -76,7 +77,7 @@ def upload_file():
     if 'file' not in flask.request.files:
         return flask.Response(json.dumps({"error": "NOT UPLOADED: No File"}), status=400)
     file = flask.request.files['file']
-    filename = flask.request.form["filename"] or file.filename
+    filename = flask.request.form.get("filename", file.filename)
     if filename == '':
         return flask.Response(json.dumps({"error": "NOT UPLOADED: No Filename Given"}), status=400)
     if file and allowed_file(filename):

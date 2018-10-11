@@ -61,18 +61,31 @@ def getMetadataList(filenames):
 ## routes
 
 # upload, file as file:
-@app.route('/upload/<filename>', methods=['PUT'])
-def upload_file(filename):
+@app.route('/upload', methods=['POST', "GET"])
+def upload_file():
+    if flask.request.method == "GET":
+        return '''
+        <!doctype html>
+        <title>Upload new File</title>
+        <h1>Upload new File</h1>
+        <form method=post enctype=multipart/form-data>
+          <input type=file name=file>
+          <input type=submit value=Upload>
+        </form>
+        '''
     # check if the post request has the file part
+    print(flask.request.headers['content-type'], file=sys.stderr)
+    if 'file' not in flask.request.files:
+        return flask.Response(json.dumps({"error": "NOT UPLOADED: No File"}), status=400)
+    file = flask.request.files['file']
+    filename = flask.request.form.get("filename", file.filename)
     if filename == '':
         return flask.Response(json.dumps({"error": "NOT UPLOADED: No Filename Given"}), status=400)
-    if allowed_file(filename):
+    if file and allowed_file(filename):
         filename = secure_filename(filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         if not os.path.isfile(filepath):
-            file = open(filepath, "wb")
-            file.write(flask.request.stream.read())
-            file.close()
+            file.save(filepath)
             return json.dumps({"file":filepath})
         else:
             return flask.Response(json.dumps({"error": "NOT UPLOADED: File Exists"}), status=400)
@@ -90,4 +103,4 @@ def singleSlide(filepath):
 
 @app.route("/data/many/<filepathlist>", methods=['GET'])
 def multiSlide(filepathlist):
-    return json.dumps(getMetadataList(json.loads(filepathlist)))
+return json.dumps(getMetadataList(json.loads(filepathlist)))

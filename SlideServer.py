@@ -7,6 +7,7 @@ import flask_cors
 import sys
 import random
 import base64
+import string
 from werkzeug.utils import secure_filename
 
 app = flask.Flask(__name__)
@@ -97,9 +98,11 @@ def upload_file():
         return flask.Response(json.dumps({"error": "NOT UPLOADED: Server Error"}), status=500)
 
 ## start a file upload by registering the intent to upload, get a token to be used in future upload requests
-@app.route('/start/upload', methods=['POST', "GET"])
-def upload_file():
+@app.route('/start/upload', methods=['POST'])
+def start_upload():
     body = flask.request.get_json()
+    if not body:
+        return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
     key = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(app.config['TOKEN_SIZE']))
     # regenrate if we happen to collide
     while key in __IN_PROGRESS:
@@ -133,6 +136,8 @@ def continue_file(token):
     else:
         if token in __IN_PROGRESS:
             body = flask.request.get_json()
+            if not body:
+                return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
             offset = body.offset or 0
             if not data in body:
                 return flask.Response(json.dumps({"error": "File data not found in body"}), status=400)
@@ -151,7 +156,6 @@ def continue_file(token):
 ## end the upload, by removing the in progress indication; locks further modification
 @app.route('/upload/finish/<token>', methods=['POST', "GET"])
 def finish_upload(token):
-    body = flask.request.get_json()
     if token in __IN_PROGRESS:
         s = __IN_PROGRESS[token]
         del __IN_PROGRESS[token]

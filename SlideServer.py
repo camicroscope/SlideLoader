@@ -8,7 +8,6 @@ import sys
 import random
 import base64
 import string
-import shutil
 from werkzeug.utils import secure_filename
 
 app = flask.Flask(__name__)
@@ -124,7 +123,7 @@ def finish_upload(token):
         tmppath =  os.path.join(app.config['TEMP_FOLDER'], token)
         if not os.path.isfile(filepath):
             if os.path.isfile(tmppath):
-                shutil.move(tmppath, filepath)
+                os.rename(tmppath, filepath)
                 return flask.Response(json.dumps({"ended": token, "filepath": filepath}))
             else:
                 return flask.Response(json.dumps({"error": "Token Not Recognised"}), status=400)

@@ -8,7 +8,7 @@ import sys
 import random
 import base64
 import string
-
+import shutil
 from werkzeug.utils import secure_filename
 
 app = flask.Flask(__name__)
@@ -67,7 +67,6 @@ def getMetadataList(filenames):
 
 ## routes
 
-
 ## start a file upload by registering the intent to upload, get a token to be used in future upload requests
 @app.route('/upload/start', methods=['POST'])
 def start_upload():
@@ -122,7 +121,7 @@ def finish_upload(token):
         tmppath =  os.path.join(app.config['TEMP_FOLDER'], token)
         if not os.path.isfile(filepath):
             if os.path.isfile(tmppath):
-                os.rename(tmppath, filepath)
+                shutil.move(tmppath, filepath)
                 return flask.Response(json.dumps({"ended": token, "filepath": filepath}))
             else:
                 return flask.Response(json.dumps({"error": "Token Not Recognised"}), status=400)

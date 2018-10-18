@@ -8,6 +8,7 @@ import sys
 import random
 import base64
 import string
+
 from werkzeug.utils import secure_filename
 
 app = flask.Flask(__name__)
@@ -65,6 +66,7 @@ def getMetadataList(filenames):
     return allData
 
 ## routes
+
 
 ## start a file upload by registering the intent to upload, get a token to be used in future upload requests
 @app.route('/upload/start', methods=['POST'])

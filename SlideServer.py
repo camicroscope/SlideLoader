@@ -107,6 +107,7 @@ def continue_file(token):
             f = open(tmppath, "wb")
             f.seek(int(offset))
             f.write(data)
+            f.flush()
             f.close()
             return flask.Response(json.dumps({"status": "OK"}), status=200)
     else:

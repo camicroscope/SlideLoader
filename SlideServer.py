@@ -48,7 +48,7 @@ def getMetadata(filename):
     metadata['filename'] = filepath
     try:
         slide = openslide.OpenSlide(filepath)
-    except BaseException, e:
+    except BaseException as e:
         return {"type": "Openslide", "error": str(e)}
     slideData = slide.properties
     metadata['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_X, None)

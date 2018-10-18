@@ -93,6 +93,7 @@ def start_upload():
 @app.route('/upload/continue/<token>', methods=['POST'])
 def continue_file(token):
     token = secure_filename(token)
+    print(token, file=sys.stderr)
     tmppath =  os.path.join(app.config['TEMP_FOLDER'], token)
     if os.path.isfile(tmppath):
         body = flask.request.get_json()

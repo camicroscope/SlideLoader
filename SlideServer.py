@@ -98,7 +98,7 @@ def continue_file(token):
         else:
             data = base64.b64decode(body['data'])
             f = open(tmppath, "wb")
-            f.seek(offset)
+            f.seek(int(offset))
             f.write(data)
             f.close()
             return flask.Response(json.dumps({"status": "OK"}), status=200)

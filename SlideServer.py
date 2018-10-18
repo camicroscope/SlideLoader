@@ -85,7 +85,6 @@ def start_upload():
         token = secure_filename(token)
         tmppath =  os.path.join(app.config['TEMP_FOLDER'], token)
     f = open(tmppath, 'a')
-    f.flush()
     f.close()
     return flask.Response(json.dumps({"upload_token": token}), status=200)
 

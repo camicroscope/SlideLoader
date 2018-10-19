@@ -103,9 +103,10 @@ def continue_file(token):
             return flask.Response(json.dumps({"error": "File data not found in body"}), status=400)
         else:
             data = base64.b64decode(body['data'])
-            f = open(tmppath, "wb")
+            f = open(tmppath, "a+b")
             f.seek(int(offset))
             f.write(data)
+            f.flush()
             f.close()
             return flask.Response(json.dumps({"status": "OK"}), status=200)
     else:

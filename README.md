@@ -11,7 +11,7 @@ Uploading is done in chunks due to the generally large size of the files involve
 
 Calling a post to the begin route (http://\<service url base\>/upload/start) will generate a token and a corresponding empty file in the uploading directory. This token is then used for the continue and finish steps.
 
-Note that a file in the uplading directory can be modified by anyone with the token.
+Note that a file in the uploading directory can be modified by anyone with the token.
 
 #### Continue
 

@@ -79,7 +79,7 @@ def start_upload():
     token = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(app.config['TOKEN_SIZE']))
     token = secure_filename(token)
     tmppath =  os.path.join(app.config['TEMP_FOLDER'], token)
-    # regenrate if we happen to collide
+    # regenerate if we happen to collide
     while os.path.isfile(tmppath):
         token = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(app.config['TOKEN_SIZE']))
         token = secure_filename(token)

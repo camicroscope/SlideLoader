@@ -73,9 +73,6 @@ def getMetadataList(filenames):
 ## start a file upload by registering the intent to upload, get a token to be used in future upload requests
 @app.route('/upload/start', methods=['POST'])
 def start_upload():
-    body = flask.request.get_json()
-    if not body:
-        return flask.Response(json.dumps({"error": "Missing JSON body: " + json.dumps(body)}), status=400)
     token = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(app.config['TOKEN_SIZE']))
     token = secure_filename(token)
     tmppath =  os.path.join(app.config['TEMP_FOLDER'], token)

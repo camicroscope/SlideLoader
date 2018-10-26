@@ -10,6 +10,11 @@ import base64
 import string
 import shutil
 from werkzeug.utils import secure_filename
+try:
+    from io import BytesIO
+except ImportError:
+    from cStringIO import StringIO as BytesIO
+
 
 app = flask.Flask(__name__)
 flask_cors.CORS(app)
@@ -44,8 +49,11 @@ def getThumbnail(filename, size=50):
         return {"error": "No such file"}
     try:
         slide = openslide.OpenSlide(filepath)
-        thumb = slide.get_thumbnail(size)
-        return {"slide" : base64.b64encode(thumb)}
+        thumb = slide.get_thumbnail((size, size))
+        buffer = BytesIO()
+        thumb.save(buffer, format="PNG")
+        data = 'data:image/png;base64,' + str(base64.b64encode(buffer.getvalue()))[2:-1]
+        return {"slide" : data, "size": size}
     except BaseException as e:
         return {"type": "Openslide", "error": str(e)}
 
@@ -159,8 +167,9 @@ def singleSlide(filepath):
     return json.dumps(getMetadata(filepath))
 
 @app.route("/data/thumbnail/<filepath>", methods=['GET'])
-def singleSlide(filepath):
-    return json.dumps(getThumbnail(filepath))
+def singleThumb(filepath):
+    size = flask.request.args.get('size', default= 50, type=int)
+    return json.dumps(getThumbnail(filepath, size))
 
 @app.route("/data/many/<filepathlist>", methods=['GET'])
 def multiSlide(filepathlist):

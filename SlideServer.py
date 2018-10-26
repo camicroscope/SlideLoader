@@ -38,6 +38,17 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def getThumbnail(filename, size=50):
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    if not os.path.isfile(filepath):
+        return {"error": "No such file"}
+    try:
+        slide = openslide.OpenSlide(filepath)
+        thumb = slide.get_thumbnail(size)
+        return {"slide" : base64.b64encode(thumb)}
+    except BaseException as e:
+        return {"type": "Openslide", "error": str(e)}
+
 # given a path, get metadata
 def getMetadata(filename):
     # TODO consider restricting filepath
@@ -146,6 +157,10 @@ def testRoute():
 @app.route("/data/one/<filepath>", methods=['GET'])
 def singleSlide(filepath):
     return json.dumps(getMetadata(filepath))
+
+@app.route("/data/thumbnail/<filepath>", methods=['GET'])
+def singleSlide(filepath):
+    return json.dumps(getThumbnail(filepath))
 
 @app.route("/data/many/<filepathlist>", methods=['GET'])
 def multiSlide(filepathlist):

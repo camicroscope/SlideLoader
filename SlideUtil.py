@@ -30,9 +30,9 @@ def file_md5(fileName):
     return m.hexdigest()
 
 def gen_thumbnail(filename, slide, size, imgtype="png"):
-        dest =  filename + "." + imgtype
-        print(dest)
-        slide.get_thumbnail([size,size]).save(dest, imgtype.upper())
+    dest =  filename + "." + imgtype
+    print(dest)
+    slide.get_thumbnail([size,size]).save(dest, imgtype.upper())
 
 def openslidedata(metadata):
     slide = openslide.OpenSlide(metadata['filename'])

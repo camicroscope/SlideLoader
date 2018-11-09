@@ -3,8 +3,7 @@
 # TODO: request local dir param
 
 # Upload Slides
-# TODO: uncomment line:
-# docker cp ~/slides/. ca-load:/data/images/
+docker cp ~/slides/. ca-load:/data/images/
 
 # Load to Database
 for file in ~/slides/*.svs; do

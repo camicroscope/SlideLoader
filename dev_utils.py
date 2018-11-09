@@ -22,7 +22,9 @@ def getMetadata(filename, upload_folder):
     try:
         slide = openslide.OpenSlide(filepath)
     except BaseException as e:
-        return {"type": "Openslide", "error": str(e)}
+        msg = {"type": "Openslide", "error": str(e)}
+        print(msg)
+        return msg
     slideData = slide.properties
     metadata['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_X, None)
     metadata['mpp-y'] = slideData.get(openslide.PROPERTY_NAME_MPP_Y, None)
@@ -34,19 +36,17 @@ def getMetadata(filename, upload_folder):
     metadata['level_count'] = int(slideData.get('level_count', 1))
     metadata['objective'] = float(slideData.get("aperio.AppMag", None))
     metadata['md5sum'] = file_md5(filepath)
-    print(metadata)
     return metadata
 
 
 def postslide(img, url):
-    print('here')
     payload = json.dumps(img)
     res = requests.post(url, data=payload, headers={'content-type': 'application/json'})
     if res.status_code < 300:
         img['_status'] = 'success'
     else:
         img['_status'] = res.status_code
-    print(img)
+    print('status ' + img['_status'])
     return img
 
 
@@ -72,4 +72,3 @@ def file_md5(fileName):
 
 def hello():
     print('hello!')
-

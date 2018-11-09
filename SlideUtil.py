@@ -1,14 +1,22 @@
-import openslide, time, hashlib, subprocess, csv, requests, json
+import csv
+import subprocess
+import time
 from multiprocessing.pool import ThreadPool
+
+import openslide
+
+from dev_utils import file_md5
+from dev_utils import postslide
+from dev_utils import post_url
+
 # GLOBALS (for now)
-config={'thumbnail_size': 100, 'thread_limit': 20}
+config = {'thumbnail_size': 100, 'thread_limit': 20}
 api_key = "0401fcb9-f513-47c2-aed1-29fd9dab2e24"
 check_url = "http://quip-data:9099/services/Camicroscope_DataLoader/DataLoader/query/getFileLocationByIID?api_key=" + api_key + "&TCGAId="
-post_url = "http://quip-data:9099/services/Camicroscope_DataLoader/DataLoader/submit/json"
-manifest_path='manifest.csv'
+manifest_path = 'manifest.csv'
 
 
-'''process expects a single image metadata as dictionary'''
+# process expects a single image metadata as dictionary
 def process(img):
     if checkslide(img['case_id'], check_url):
         try:
@@ -18,21 +26,12 @@ def process(img):
             img['_status'] = e
     return img
 
-def file_md5(fileName):
-    m = hashlib.md5()
-    blocksize = 2**20
-    with open(fileName, "rb") as f:
-        while True:
-            buf = f.read(blocksize)
-            if not buf:
-                break
-            m.update(buf)
-    return m.hexdigest()
 
 def gen_thumbnail(filename, slide, size, imgtype="png"):
-    dest =  filename + "." + imgtype
+    dest = filename + "." + imgtype
     print(dest)
-    slide.get_thumbnail([size,size]).save(dest, imgtype.upper())
+    slide.get_thumbnail([size, size]).save(dest, imgtype.upper())
+
 
 def openslidedata(metadata):
     slide = openslide.OpenSlide(metadata['filename'])
@@ -53,19 +52,12 @@ def openslidedata(metadata):
         gen_thumbnail(metadata['filename'], slide, thumbnail_size)
     return metadata
 
-def postslide(img, url):
-    payload = json.dumps(img)
-    res = requests.post(url, data=payload, headers={'content-type': 'application/json', 'api_key': api_key})
-    if (res.status_code<300):
-        img['_status'] = 'success'
-    else:
-        img['_status'] = res.status_code
-    return img
 
 def checkslide(id, url):
-    return subprocess.check_output(["curl", url+id]) == '[]'
+    return subprocess.check_output(["curl", url + id]) == '[]'
 
-#get manifest
+
+# get manifest
 with open(manifest_path, 'r') as f:
     reader = csv.DictReader(f)
     manifest = [row for row in reader]

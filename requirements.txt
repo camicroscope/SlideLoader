@@ -2,3 +2,4 @@ openslide-python
 flask
 Werkzeug
 flask-cors
+requests

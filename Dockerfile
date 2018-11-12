@@ -28,4 +28,4 @@ EXPOSE 4000
 #CMD python -m flask run --host=0.0.0.0 --port=4000
 
 #prod only
-CMD gunicorn -w 4 -b 0.0.0.0:4000 SlideServer:app
+CMD gunicorn -w 4 -b 0.0.0.0:4000 SlideServer:app --timeout 400

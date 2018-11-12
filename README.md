@@ -21,6 +21,11 @@ Post filedata encoded in base64 as "data" and the offset as "offset" in a json d
 
 To prevent further modification to the file, call the finish route (http://\<service url base\>/upload/finish/<\token\>) with the destination filename as "filename" in a json document in the body. In most cases where this fails (such as a rejection for a filename being taken), the temporary file is unchanged so a user can simply try again.
 
+### Multiple Image Upload
+Place your images into a directory on your filesystem.
+Then use upload.sh to upload the file.  Pass your file path as a parameter.
+Example: `./upload.sh /path/to/svs/files`
+
 ### Get a Single Image's Metadata
 
 See, for example, http://\<service url base\>/data/one/\<slide filename\>

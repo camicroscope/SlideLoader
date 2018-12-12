@@ -5,7 +5,7 @@ import requests
 
 import openslide
 
-post_url = "http://ca-data:9099/services/caMicroscope/Slide/submit/json" 
+post_url = "http://ca-data:9099/services/caMicroscope/Slide/submit/json"
 
 
 
@@ -36,6 +36,8 @@ def getMetadata(filename, upload_folder):
     metadata['level_count'] = int(slideData.get('level_count', 1))
     metadata['objective'] = float(slideData.get("aperio.AppMag", None))
     metadata['md5sum'] = file_md5(filepath)
+    metadata['study'] = ""
+    metadata['specimen'] = ""
     return metadata
 
 

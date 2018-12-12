@@ -11,6 +11,8 @@ def process(a):
     tmp = tmp.replace("/data", "")
     d['location'] = tmp
     d['mpp'] = float(d['mpp-x'])
+    d['specimen'] = ""
+    d['study'] = ""
     print(d, post_url)
     postslide(d, post_url)
 

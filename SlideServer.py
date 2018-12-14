@@ -21,8 +21,8 @@ app = flask.Flask(__name__)
 flask_cors.CORS(app)
 
 # where to put and get slides
-app.config['UPLOAD_FOLDER'] = "/data/images/"
-app.config['TEMP_FOLDER'] = "/data/images/uploading/"
+app.config['UPLOAD_FOLDER'] = "/images/"
+app.config['TEMP_FOLDER'] = "/images/uploading/"
 app.config['TOKEN_SIZE'] = 10
 app.config['SECRET_KEY'] = os.urandom(24)
 

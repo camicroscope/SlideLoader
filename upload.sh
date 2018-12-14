@@ -12,11 +12,11 @@ if [[ ! -d "$1" ]]; then
 fi
 
 # Upload Slides
-docker cp $1/. ca-load:/data/images/
+docker cp $1/. ca-load:/images/
 
 # Load to Database
 for file in $1/*.svs; do
     slide="$(basename "$file")"
     echo $slide
-    docker exec -it ca-load python3 /var/www/upload.py "$slide" "/data/images/"
+    docker exec -it ca-load python3 /var/www/upload.py "$slide" "/images/"
 done

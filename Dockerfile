@@ -12,7 +12,7 @@ RUN pip install gunicorn[eventlet]
 
 ENV FLASK_ENV development
 
-run mkdir -p /images/uploading
+RUN mkdir -p /images/uploading
 
 COPY ./ ./
 

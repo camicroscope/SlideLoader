@@ -25,6 +25,6 @@ def process(record):
         return name
 
 # do it
-manifest = requests.get('https://api.github.com/events').json()
+manifest = requests.get(URL).json()
 res = ThreadPool(THREADS).imap_unordered(process, manifest)
 print([r for r in res])

@@ -11,14 +11,13 @@ from dev_utils import post_url
 
 # GLOBALS (for now)
 config = {'thumbnail_size': 100, 'thread_limit': 20}
-api_key = "0401fcb9-f513-47c2-aed1-29fd9dab2e24"
-check_url = "http://quip-data:9099/services/Camicroscope_DataLoader/DataLoader/query/getFileLocationByIID?api_key=" + api_key + "&TCGAId="
+check_url = "http://ca-security:4010/data/Slide/find?slide="
 manifest_path = 'manifest.csv'
 
 
 # process expects a single image metadata as dictionary
 def process(img):
-    if checkslide(img['case_id'], check_url):
+    if checkslide(img['name'], check_url):
         try:
             img = openslidedata(img)
             img = postslide(img, post_url)

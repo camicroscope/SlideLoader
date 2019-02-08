@@ -39,7 +39,8 @@ def openslidedata(metadata):
     slide = openslide.OpenSlide(metadata['filename'])
     slideData = slide.properties
     metadata['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_X, None)
-    metadata['mpp-y'] = slideData.get(openslide.PROPERTY_NAME_MPP_Y, None)
+    metadata['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_Y, None)
+    metadata['mpp'] = metadata['mpp-x'] or metadata['mpp-x'] or None
     # metadata['height'] = slideData.get("openslide.level[0].height", None)
     # metadata['width'] = slideData.get("openslide.level[0].width", None)
     metadata['height'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_HEIGHT, None)

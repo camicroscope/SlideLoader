@@ -11,16 +11,18 @@ from dev_utils import post_url
 
 # GLOBALS (for now)
 config = {'thumbnail_size': 100, 'thread_limit': 20}
-api_key = "0401fcb9-f513-47c2-aed1-29fd9dab2e24"
-check_url = "http://quip-data:9099/services/Camicroscope_DataLoader/DataLoader/query/getFileLocationByIID?api_key=" + api_key + "&TCGAId="
+check_url = "http://ca-security:4010/data/Slide/find?slide="
 manifest_path = 'manifest.csv'
 
 
 # process expects a single image metadata as dictionary
 def process(img):
-    if checkslide(img['case_id'], check_url):
+    if checkslide(img['name'], check_url):
         try:
             img = openslidedata(img)
+            img['study'] = img['study'] or ""
+            img['specimen'] = img['specimen'] or ""
+            img['location'] = img['location'] or img['filename']
             img = postslide(img, post_url)
         except BaseException as e:
             img['_status'] = e
@@ -37,7 +39,8 @@ def openslidedata(metadata):
     slide = openslide.OpenSlide(metadata['filename'])
     slideData = slide.properties
     metadata['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_X, None)
-    metadata['mpp-y'] = slideData.get(openslide.PROPERTY_NAME_MPP_Y, None)
+    metadata['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_Y, None)
+    metadata['mpp'] = metadata['mpp-x'] or metadata['mpp-x'] or None
     # metadata['height'] = slideData.get("openslide.level[0].height", None)
     # metadata['width'] = slideData.get("openslide.level[0].width", None)
     metadata['height'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_HEIGHT, None)

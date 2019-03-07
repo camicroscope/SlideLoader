@@ -50,8 +50,6 @@ def openslidedata(metadata):
     metadata['objective'] = float(slideData.get("aperio.AppMag", None))
     metadata['md5sum'] = file_md5(metadata['filename'])
     metadata['timestamp'] = time.time()
-    metadata['study'] = ""
-    metadata['specimen'] = ""
     thumbnail_size = config.get('thumbnail_size', None)
     if thumbnail_size:
         gen_thumbnail(metadata['filename'], slide, thumbnail_size)

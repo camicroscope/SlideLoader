@@ -2,6 +2,9 @@ import openslide
 from multiprocessing.pool import ThreadPool
 import requests
 import sys
+from PIL import Image
+
+Image.MAX_IMAGE_PIXELS = None
 
 if len(sys.argv <2):
     sys.exit("Expects a url as second argument")

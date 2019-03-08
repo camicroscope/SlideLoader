@@ -1,30 +1,25 @@
-import requests
 import openslide
 from multiprocessing.pool import ThreadPool
+import requests
+import sys
 
-FILE_FIELD = "file-location"
-NAME_FIELD = "case_id"
-URL = "http://172.20.11.223:9099/services/Camic_TCIA/Image/query/find"
-IM_SIZE = 200
-THREADS = 10
+if len(sys.argv <2):
+    sys.exit("Expects a url as second argument")
 
-def gen_thumbnail(filename, slide, size, imgtype="png"):
-    dest = filename + "." + imgtype
-    print(dest)
-    slide.get_thumbnail([size, size]).save(dest, imgtype.upper())
+url = sys.argv[1]
 
-def process(record):
-    file = record[FILE_FIELD]
-    name = record[NAME_FIELD]
+data = requests.get(url=url).json()
+
+
+def get_thumbnail(obj):
+    slide = obj['file-location']
+    dest = obj['case_id'] + '.png'
     try:
-        slide = openslide.OpenSlide(file)
-        gen_thumbnail(name, slide, IM_SIZE, imgtype="png")
-        return ""
+        image = openslide.open_slide(slide)
+        image.get_thumbnail([200,200]).save(dest, "PNG")
+        return dest
     except BaseException as e:
-        # return errors only
-        return name
+        return e
 
-# do it
-manifest = requests.get(URL).json()
-res = ThreadPool(THREADS).imap_unordered(process, manifest)
+res = ThreadPool(20).imap_unordered(get_thumbnail, data)
 print([r for r in res])

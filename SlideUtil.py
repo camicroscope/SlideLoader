@@ -20,8 +20,8 @@ def process(img):
     if checkslide(img['name'], check_url):
         try:
             img = openslidedata(img)
-            img['study'] = img['study'] or ""
-            img['specimen'] = img['specimen'] or ""
+            img['study'] = img.get('study', "")
+            img['specimen'] = img.get('specimen', "")
             img['location'] = img['location'] or img['filename']
             img = postslide(img, post_url)
         except BaseException as e:

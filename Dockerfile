@@ -3,7 +3,7 @@ FROM python:3-stretch
 WORKDIR /var/www
 
 RUN apt-get -q update
-RUN apt-get -q install -y openslide-tools python-openslide
+RUN apt-get -q install -y openslide-tools python-openslide vim
 
 RUN pip install flask
 RUN pip install gunicorn

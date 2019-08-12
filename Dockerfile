@@ -2,7 +2,7 @@ FROM python:3-stretch
 
 WORKDIR /var/www
 
-RUN apt-get -q update
+RUN apt-get -q update --fix-missing
 RUN apt-get -q install -y openslide-tools python-openslide vim
 
 RUN pip install flask

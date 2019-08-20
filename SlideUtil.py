@@ -36,7 +36,7 @@ def gen_thumbnail(filename, slide, size, imgtype="png"):
 
 
 def openslidedata(metadata):
-    slide = openslide.OpenSlide(metadata['filename'])
+    slide = openslide.OpenSlide(metadata['location'])
     slideData = slide.properties
     metadata['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_X, None)
     metadata['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_Y, None)
@@ -48,11 +48,11 @@ def openslidedata(metadata):
     metadata['vendor'] = slideData.get(openslide.PROPERTY_NAME_VENDOR, None)
     metadata['level_count'] = int(slideData.get('level_count', 1))
     metadata['objective'] = float(slideData.get("aperio.AppMag", None))
-    metadata['md5sum'] = file_md5(metadata['filename'])
+    metadata['md5sum'] = file_md5(metadata['location'])
     metadata['timestamp'] = time.time()
     thumbnail_size = config.get('thumbnail_size', None)
     if thumbnail_size:
-        gen_thumbnail(metadata['filename'], slide, thumbnail_size)
+        gen_thumbnail(metadata['location'], slide, thumbnail_size)
     return metadata
 
 

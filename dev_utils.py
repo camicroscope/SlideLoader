@@ -18,7 +18,7 @@ def getMetadata(filename, upload_folder):
         msg = {"error": "No such file"}
         print(msg)
         return msg
-    metadata['filename'] = filepath
+    metadata['location'] = filepath
     try:
         slide = openslide.OpenSlide(filepath)
     except BaseException as e:

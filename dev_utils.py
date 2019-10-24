@@ -47,7 +47,7 @@ def postslide(img, url):
     if res.status_code < 300:
         img['_status'] = 'success'
     else:
-        img['_status'] = res.status_code
+        img['_status'] = str(res.status_code)
     print('status ' + img['_status'])
     return img
 

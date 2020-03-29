@@ -121,7 +121,7 @@ def finish_upload(token):
             else:
                 return flask.Response(json.dumps({"error": "Token Not Recognised"}), status=400)
         else:
-            return flask.Response(json.dumps({"error": "Invalid filename"}), status=400)
+            return flask.Response(json.dumps({"error": "File with name '" + filename + "' already exists"}), status=400)
 
     else:
         return flask.Response(json.dumps({"error": "Invalid filename"}), status=400)

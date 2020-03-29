@@ -5,6 +5,7 @@ import random
 import shutil
 import string
 import sys
+import pyvips
 
 import flask
 import flask_cors
@@ -47,6 +48,16 @@ def getThumbnail(filename, size=50):
         return {"slide": data, "size": size}
     except BaseException as e:
         return {"type": "Openslide", "error": str(e)}
+
+@app.route('/slide/<filename>/pyramid/<dest>', methods=['POST'])
+def makePyramid(filename, dest):
+    try:
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        destpath = os.path.join(app.config['UPLOAD_FOLDER'], dest)
+        pyvips.Image.new_from_file(filepath, access='sequential').tiffsave(destpath, tile=True, compression="lzw", tile_width=256, tile_height=256, pyramid=True, bigtiff=True, xres=0.254, yres=0.254)
+        return flask.Response(json.dumps({"status": "OK"}), status=200)
+    except BaseException as e:
+        return flask.Response(json.dumps({"type": "pyvips", "error": str(e)}), status=500)
 
 
 # routes
@@ -110,7 +121,7 @@ def finish_upload(token):
             else:
                 return flask.Response(json.dumps({"error": "Token Not Recognised"}), status=400)
         else:
-            return flask.Response(json.dumps({"error": "Invalid filename"}), status=400)
+            return flask.Response(json.dumps({"error": "File with name '" + filename + "' already exists"}), status=400)
 
     else:
         return flask.Response(json.dumps({"error": "Invalid filename"}), status=400)

@@ -150,3 +150,11 @@ def singleThumb(filepath):
 @app.route("/data/many/<filepathlist>", methods=['GET'])
 def multiSlide(filepathlist):
     return json.dumps(dev_utils.getMetadataList(json.loads(filepathlist), app.config['UPLOAD_FOLDER']))
+
+@app.route("/getSlide/<image_name>")
+def getSlide(image_name):
+    if(os.path.isfile("/images/"+image_name)):
+        return flask.send_from_directory(app.config["UPLOAD_FOLDER"], filename=image_name, as_attachment=True)
+    else:
+        return flask.Response(json.dumps({"error": "File doesnot exist"}), status=400)  
+            

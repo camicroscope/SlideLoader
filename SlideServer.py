@@ -130,7 +130,7 @@ def finish_upload(token):
     # get info associated with token
     # move the file out of temp to upload dir
 
-# end the upload, by removing the in progress indication; locks further modification
+# Delete the requested slide
 @app.route('/slide/delete', methods=['POST', "GET"])
 def slide_delete():
     body = flask.request.get_json()
@@ -153,7 +153,7 @@ def slide_delete():
     # check for file if it exists or not
     # delete the file
 
-    
+
 @app.route("/test", methods=['GET'])
 def testRoute():
     return '{"Status":"up"}'

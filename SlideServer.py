@@ -130,7 +130,30 @@ def finish_upload(token):
     # get info associated with token
     # move the file out of temp to upload dir
 
+# end the upload, by removing the in progress indication; locks further modification
+@app.route('/slide/delete', methods=['POST', "GET"])
+def slide_delete():
+    body = flask.request.get_json()
 
+    if not body:
+        return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
+    filename = body['filename']
+    if filename and allowed_file(filename):
+        filename = secure_filename(filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        if os.path.isfile(filepath):
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            return flask.Response(json.dumps({"deleted": filename, "success": True})) 
+        else:
+            return flask.Response(json.dumps({"error": "File with name '" + filename + "' does not exists"}), status=400)
+
+    else:
+        return flask.Response(json.dumps({"error": "Invalid filename"}), status=400)
+
+    # check for file if it exists or not
+    # delete the file
+
+    
 @app.route("/test", methods=['GET'])
 def testRoute():
     return '{"Status":"up"}'

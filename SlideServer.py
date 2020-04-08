@@ -147,7 +147,7 @@ def finish_upload(token):
 
 # Delete the requested slide
 @app.route('/slide/delete', methods=['POST'])
-@requires_auth(access_level="Admin")
+@requires_auth(access_level=["Admin"])
 def slide_delete():
     body = flask.request.get_json()
 
@@ -190,6 +190,14 @@ def singleThumb(filepath):
 def multiSlide(filepathlist):
     return json.dumps(dev_utils.getMetadataList(json.loads(filepathlist), app.config['UPLOAD_FOLDER']))
 
+
+@app.route("/getSlide/<image_name>")
+def getSlide(image_name):
+    if(os.path.isfile("/images/"+image_name)):
+        return flask.send_from_directory(app.config["UPLOAD_FOLDER"], filename=image_name, as_attachment=True)
+    else:
+        return flask.Response(json.dumps({"error": "File does not exist"}), status=404)  
+            
 
 @app.errorhandler(AuthError)
 def handle_auth_error(ex):

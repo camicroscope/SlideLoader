@@ -14,7 +14,7 @@ from jose import jwt
 AUTH0_DOMAIN = False 
 API_AUDIENCE = False
 ALGORITHMS = ["RS256"]
-DISABLE_SEC = False # Change to "True" for testing security  
+DISABLE_SEC = False # Change to "True" for testing  
 
 
 # Format error response and append status code
@@ -82,11 +82,11 @@ def requires_auth(access_level):
                     if 'key.pub' in onlyfiles:
                         public_key = open('./keys/key.pub', mode='r', encoding='utf-8').read()
                     else:
-                        public_key = None
+                        public_key = False
                     try:
                         payload = jwt.decode(token, public_key, algorithms=['RS256'])
                         
-                        if str(payload["userType"]) != access_level:                   
+                        if str(payload["userType"]) not in access_level:                   
                             raise AuthError({"code": "invalid_usertype",
                                             "description": "You are not authorized for this action"}, 403)
 
@@ -103,7 +103,7 @@ def requires_auth(access_level):
                                         "description":
                                             "Unable to parse authentication"
                                             " token.", 
-                                        "error": str(e), "jwt": str(payload['userType'])}, 401)
+                                        "error": str(e)}, 401)
                     _request_ctx_stack.top.current_user = payload
                     return f(*args, **kwargs)
 

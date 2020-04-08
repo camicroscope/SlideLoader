@@ -156,5 +156,5 @@ def getSlide(image_name):
     if(os.path.isfile("/images/"+image_name)):
         return flask.send_from_directory(app.config["UPLOAD_FOLDER"], filename=image_name, as_attachment=True)
     else:
-        return flask.Response(json.dumps({"error": "File doesnot exist"}), status=400)  
+        return flask.Response(json.dumps({"error": "File does not exist"}), status=404)  
             

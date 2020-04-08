@@ -26,8 +26,8 @@ RUN pip3 install -r requirements.txt
 EXPOSE 4000
 
 #debug/dev only
-#ENV FLASK_APP SlideServer.py
-#CMD python -m flask run --host=0.0.0.0 --port=4000
+ENV FLASK_APP SlideServer.py
+CMD python -m flask run --host=0.0.0.0 --port=4000
 
 #prod only
-CMD gunicorn -w 4 -b 0.0.0.0:4000 SlideServer:app --timeout 400
+# CMD gunicorn -w 4 -b 0.0.0.0:4000 SlideServer:app --timeout 400

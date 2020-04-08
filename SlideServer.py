@@ -6,12 +6,27 @@ import shutil
 import string
 import sys
 import pyvips
+from os import listdir
+from os.path import isfile, join
+from auth.authHandler import requires_auth, AuthError
 
 import flask
 import flask_cors
 import openslide
 from werkzeug.utils import secure_filename
 import dev_utils
+
+from functools import wraps
+
+from flask import Flask, request, jsonify, _request_ctx_stack
+from flask_cors import cross_origin
+from jose import jwt
+
+AUTH0_DOMAIN = 'YOUR_DOMAIN'
+API_AUDIENCE = False
+ALGORITHMS = ["RS256"]
+
+
 
 try:
     from io import BytesIO
@@ -27,7 +42,7 @@ app.config['TEMP_FOLDER'] = "/images/uploading/"
 app.config['TOKEN_SIZE'] = 10
 app.config['SECRET_KEY'] = os.urandom(24)
 
-ALLOWED_EXTENSIONS = set(['svs', 'tif', 'tiff', 'vms', 'vmu', 'ndpi', 'scn', 'mrxs', 'bif', 'svslide'])
+ALLOWED_EXTENSIONS = set(['svs', 'tif', 'tiff', 'vms', 'vmu', 'ndpi', 'scn', 'mrxs', 'bif', 'svslide'])    
 
 
 def allowed_file(filename):
@@ -131,12 +146,14 @@ def finish_upload(token):
     # move the file out of temp to upload dir
 
 # Delete the requested slide
-@app.route('/slide/delete', methods=['POST', "GET"])
+@app.route('/slide/delete', methods=['POST'])
+@requires_auth(access_level="Admin")
 def slide_delete():
     body = flask.request.get_json()
 
     if not body:
         return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
+        
     filename = body['filename']
     if filename and allowed_file(filename):
         filename = secure_filename(filename)
@@ -152,7 +169,6 @@ def slide_delete():
 
     # check for file if it exists or not
     # delete the file
-
 
 @app.route("/test", methods=['GET'])
 def testRoute():
@@ -173,3 +189,10 @@ def singleThumb(filepath):
 @app.route("/data/many/<filepathlist>", methods=['GET'])
 def multiSlide(filepathlist):
     return json.dumps(dev_utils.getMetadataList(json.loads(filepathlist), app.config['UPLOAD_FOLDER']))
+
+
+@app.errorhandler(AuthError)
+def handle_auth_error(ex):
+    response = jsonify(ex.error)
+    response.status_code = ex.status_code
+    return response

@@ -182,10 +182,10 @@ def continue_urlfile(token):
             try:
                 url = urllib.parse.unquote(url)
                 urllib.request.urlretrieve(url, tmppath)
+                uploadStatus.uploadedStatus = "True"
+                return flask.Response(json.dumps({"status": "OK Uploaded"}), status=200)
             except:
-                return flask.Response(json.dumps({"status": "URL invalid"}), status=400)        
-            uploadStatus.uploadedStatus = "True"
-            return flask.Response(json.dumps({"status": "OK Uploaded"}), status=200)
+                return flask.Response(json.dumps({"status": "URL invalid"}), status=400)
     else:
         return flask.Response(json.dumps({"error": "Token Not Recognised"}), status=400)
 

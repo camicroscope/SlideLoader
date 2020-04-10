@@ -6,7 +6,7 @@ import shutil
 import string
 import sys
 import pyvips
-
+import urllib
 import flask
 import flask_cors
 import openslide
@@ -157,4 +157,42 @@ def getSlide(image_name):
         return flask.send_from_directory(app.config["UPLOAD_FOLDER"], filename=image_name, as_attachment=True)
     else:
         return flask.Response(json.dumps({"error": "File does not exist"}), status=404)  
-            
+
+
+
+class upload():
+    uploadedStatus = "False"
+uploadStatus = upload();
+
+# using the token from the start url upload endpoint
+@app.route('/urlupload/continue/<token>', methods=['POST'])
+def continue_urlfile(token):
+    uploadStatus.uploadedStatus = "False"
+    token = secure_filename(token)
+    tmppath = os.path.join(app.config['TEMP_FOLDER'], token)
+    if os.path.isfile(tmppath):
+        body = flask.request.get_json()
+        if not body:
+            return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
+        if not 'url' in body:
+            return flask.Response(json.dumps({"error": "File url not present in body"}), status=400)
+        else:
+            url = body['url']
+            uploadStatus.uploadedStatus = "False"
+            try:
+                url = urllib.parse.unquote(url)
+                urllib.request.urlretrieve(url, tmppath)
+            except:
+                return flask.Response(json.dumps({"status": "URL invalid"}), status=400)        
+            uploadStatus.uploadedStatus = "True"
+            return flask.Response(json.dumps({"status": "OK Uploaded"}), status=200)
+    else:
+        return flask.Response(json.dumps({"error": "Token Not Recognised"}), status=400)
+
+
+@app.route('/urlupload/check', methods=['GET'])
+def urlUploadStatus():
+    if(uploadStatus.uploadedStatus=="True"):
+        uploadStatus.uploadedStatus=="False"
+        return flask.Response(json.dumps({"uploaded": "True"}), status=200)
+    return flask.Response(json.dumps({"uploaded": "False"}), status=200)

@@ -8,7 +8,6 @@ import sys
 import pyvips
 from os import listdir
 from os.path import isfile, join
-from auth.authHandler import requires_auth, AuthError
 
 import flask
 import flask_cors
@@ -16,11 +15,8 @@ import openslide
 from werkzeug.utils import secure_filename
 import dev_utils
 
-from functools import wraps
-
 from flask import Flask, request, jsonify, _request_ctx_stack
 from flask_cors import cross_origin
-from jose import jwt
 
 AUTH0_DOMAIN = 'YOUR_DOMAIN'
 API_AUDIENCE = False
@@ -147,7 +143,6 @@ def finish_upload(token):
 
 # Delete the requested slide
 @app.route('/slide/delete', methods=['POST'])
-@requires_auth(access_level=["Admin"])
 def slide_delete():
     body = flask.request.get_json()
 
@@ -199,8 +194,4 @@ def getSlide(image_name):
         return flask.Response(json.dumps({"error": "File does not exist"}), status=404)  
             
 
-@app.errorhandler(AuthError)
-def handle_auth_error(ex):
-    response = jsonify(ex.error)
-    response.status_code = ex.status_code
-    return response
+# 

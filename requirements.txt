@@ -3,7 +3,3 @@ flask
 Werkzeug
 flask-cors
 requests
-python-dotenv
-python-jose
-six
-cryptography

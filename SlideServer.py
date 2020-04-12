@@ -149,7 +149,7 @@ def slide_delete():
             os.remove(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             return flask.Response(json.dumps({"deleted": filename, "success": True})) 
         else:
-            return flask.Response(json.dumps({"error": "File with name '" + filename + "' does not exists"}), status=400)
+            return flask.Response(json.dumps({"error": "File with name '" + filename + "' does not exist"}), status=400)
 
     else:
         return flask.Response(json.dumps({"error": "Invalid filename"}), status=400)

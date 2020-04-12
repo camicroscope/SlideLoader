@@ -9,11 +9,14 @@ import pyvips
 from os import listdir
 from os.path import isfile, join
 
+
+import urllib
 import flask
 import flask_cors
 import openslide
 from werkzeug.utils import secure_filename
 import dev_utils
+import requests
 
 
 try:
@@ -183,7 +186,42 @@ def getSlide(image_name):
     if(os.path.isfile("/images/"+image_name)):
         return flask.send_from_directory(app.config["UPLOAD_FOLDER"], filename=image_name, as_attachment=True)
     else:
-        return flask.Response(json.dumps({"error": "File does not exist"}), status=404)  
-            
+        return flask.Response(json.dumps({"error": "File does not exist"}), status=404)
 
-# 
+# using the token from the start url upload endpoint
+@app.route('/urlupload/continue/<token>', methods=['POST'])
+def continue_urlfile(token):
+    token = secure_filename(token)
+    tmppath = os.path.join(app.config['TEMP_FOLDER'], token)
+    if os.path.isfile(tmppath):
+        body = flask.request.get_json()
+        if not body:
+            return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
+        if not 'url' in body:
+            return flask.Response(json.dumps({"error": "File url not present in body"}), status=400)
+        else:
+            url = body['url']
+            try:
+                url = urllib.parse.unquote(url)
+                urllib.request.urlretrieve(url, tmppath)
+                return flask.Response(json.dumps({"status": "OK Uploaded"}), status=200)
+            except:
+                return flask.Response(json.dumps({"error": "URL invalid"}), status=400)
+    else:
+        return flask.Response(json.dumps({"error": "Token Not Recognised"}), status=400)
+
+# Route to check if the URL file has completely uploaded to the server 
+# Query Params: 'url', 'token'
+@app.route('/urlupload/check', methods=['GET'])
+def urlUploadStatus():
+    url = flask.request.args.get('url')
+    url = urllib.parse.unquote(url)
+    token = flask.request.args.get('token')
+    info = requests.head(url)
+    urlFileSize = int(info.headers['Content-Length'])
+    fileSize = os.path.getsize(app.config['TEMP_FOLDER']+'/'+token)
+    if(fileSize >= urlFileSize):
+        return flask.Response(json.dumps({"uploaded": "True"}), status=200)
+    else:
+        return flask.Response(json.dumps({"uploaded": "False"}), status=200)
+

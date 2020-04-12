@@ -15,14 +15,6 @@ import openslide
 from werkzeug.utils import secure_filename
 import dev_utils
 
-from flask import Flask, request, jsonify, _request_ctx_stack
-from flask_cors import cross_origin
-
-AUTH0_DOMAIN = 'YOUR_DOMAIN'
-API_AUDIENCE = False
-ALGORITHMS = ["RS256"]
-
-
 
 try:
     from io import BytesIO

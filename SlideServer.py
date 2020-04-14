@@ -6,6 +6,10 @@ import shutil
 import string
 import sys
 import pyvips
+from os import listdir
+from os.path import isfile, join
+
+
 import urllib
 import flask
 import flask_cors
@@ -13,6 +17,7 @@ import openslide
 from werkzeug.utils import secure_filename
 import dev_utils
 import requests
+
 
 try:
     from io import BytesIO
@@ -28,7 +33,7 @@ app.config['TEMP_FOLDER'] = "/images/uploading/"
 app.config['TOKEN_SIZE'] = 10
 app.config['SECRET_KEY'] = os.urandom(24)
 
-ALLOWED_EXTENSIONS = set(['svs', 'tif', 'tiff', 'vms', 'vmu', 'ndpi', 'scn', 'mrxs', 'bif', 'svslide'])
+ALLOWED_EXTENSIONS = set(['svs', 'tif', 'tiff', 'vms', 'vmu', 'ndpi', 'scn', 'mrxs', 'bif', 'svslide'])    
 
 
 def allowed_file(filename):
@@ -131,6 +136,29 @@ def finish_upload(token):
     # get info associated with token
     # move the file out of temp to upload dir
 
+# Delete the requested slide
+@app.route('/slide/delete', methods=['POST'])
+def slide_delete():
+    body = flask.request.get_json()
+
+    if not body:
+        return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
+        
+    filename = body['filename']
+    if filename and allowed_file(filename):
+        filename = secure_filename(filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        if os.path.isfile(filepath):
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            return flask.Response(json.dumps({"deleted": filename, "success": True})) 
+        else:
+            return flask.Response(json.dumps({"error": "File with name '" + filename + "' does not exist"}), status=400)
+
+    else:
+        return flask.Response(json.dumps({"error": "Invalid filename"}), status=400)
+
+    # check for file if it exists or not
+    # delete the file
 
 @app.route("/test", methods=['GET'])
 def testRoute():
@@ -152,13 +180,13 @@ def singleThumb(filepath):
 def multiSlide(filepathlist):
     return json.dumps(dev_utils.getMetadataList(json.loads(filepathlist), app.config['UPLOAD_FOLDER']))
 
+
 @app.route("/getSlide/<image_name>")
 def getSlide(image_name):
     if(os.path.isfile("/images/"+image_name)):
         return flask.send_from_directory(app.config["UPLOAD_FOLDER"], filename=image_name, as_attachment=True)
     else:
-        return flask.Response(json.dumps({"error": "File does not exist"}), status=404)  
-
+        return flask.Response(json.dumps({"error": "File does not exist"}), status=404)
 
 # using the token from the start url upload endpoint
 @app.route('/urlupload/continue/<token>', methods=['POST'])
@@ -196,3 +224,4 @@ def urlUploadStatus():
         return flask.Response(json.dumps({"uploaded": "True"}), status=200)
     else:
         return flask.Response(json.dumps({"uploaded": "False"}), status=200)
+

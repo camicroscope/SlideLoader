@@ -34,8 +34,10 @@ def getMetadata(filename, upload_folder):
         "openslide.level[0].width", None)
     metadata['vendor'] = slideData.get(openslide.PROPERTY_NAME_VENDOR, None)
     metadata['level_count'] = int(slideData.get('level_count', 1))
-    metadata['objective'] = float(slideData.get("aperio.AppMag", -1.0))
+    metadata['objective'] = float(slideData.get(openslide.PROPERTY_NAME_OBJECTIVE_POWER, 0) or
+                                  slideData.get("aperio.AppMag", -1.0))
     metadata['md5sum'] = file_md5(filepath)
+    metadata['comment'] = slideData.get(openslide.PROPERTY_NAME_COMMENT, None)
     metadata['study'] = ""
     metadata['specimen'] = ""
     return metadata

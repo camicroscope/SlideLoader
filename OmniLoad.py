@@ -6,6 +6,7 @@ import argparse # to read arguments
 import time # for timestamp
 import os # for os/fs systems
 import json # for json in and out
+import pymongo # for mongo in and out
 
 parser = argparse.ArgumentParser(description='Load slides or results to caMicroscope.')
 # read in collection
@@ -18,8 +19,11 @@ parser.add_argument('-f', type=str, default="manifest.csv",
 parser.add_argument('-o', type=str, default="mongo", choices=['mongo', 'jsonfile', 'api', 'pathdb'],
                     help='Output destination type')
 # read in dest uri or equivalent
-parser.add_argument('-d', type=str, default="ca-mongo",
+parser.add_argument('-d', type=str, default="mongodb://ca-mongo:27017/",
                     help='Output destination')
+# read in mongo database
+parser.add_argument('-db', type=str, default="camic",
+                    help='For mongo, the db to use')
 # perform slide lookups for mongo or pathdb
 parser.add_argument('--lookup', type=str, help='Lookup slide id for results')
 
@@ -70,9 +74,18 @@ print("[WARNING] -- Validation not Implemented")
 # perform slide lookup for results, as applicable
 
 # if dest is file, then write them
-if(args.o == "jsonfile"):
+if (args.o == "jsonfile"):
     with open(args.d, 'w') as f:
         json.dump(manifest, f)
+elif (args.o == "mongo"):
+    client = pymongo.MongoClient(args.d)
+    db = client[args.db]
+    col = db[args.i]
+    col.insert_many(manifest)
+elif (args.o == "api"):
+    raise NotImplementedError("Output type: " + args.o + " not yet implemented")
+elif (args.o == "pathdb"):
+    raise NotImplementedError("Output type: " + args.o + " not yet implemented")
 else:
     raise NotImplementedError("Output type: " + args.o + " not yet implemented")
 

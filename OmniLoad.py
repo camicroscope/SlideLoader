@@ -96,13 +96,9 @@ elif (args.o == "api"):
             retry = False
     x.raise_for_status()
 elif (args.o == "pathdb"):
+    #! TODO
+    if (args.i != "slide"):
+        raise AssertionError("Pathdb only holds slide data.")
     raise NotImplementedError("Output type: " + args.o + " not yet implemented")
 else:
     raise NotImplementedError("Output type: " + args.o + " not yet implemented")
-
-# if dest is mongo, connect
-
-# if dest is an api, try
-# ^^ if 401, ask for a token
-
-# if dest is pathdb, ask for token

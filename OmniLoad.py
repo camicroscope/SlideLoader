@@ -7,6 +7,7 @@ import time # for timestamp
 import os # for os/fs systems
 import json # for json in and out
 import pymongo # for mongo in and out
+import requests # for api and pathdb in and out
 
 parser = argparse.ArgumentParser(description='Load slides or results to caMicroscope.')
 # read in collection
@@ -30,6 +31,7 @@ parser.add_argument('--lookup', type=str, help='Lookup slide id for results')
 args = parser.parse_args()
 print(args)
 
+# get fields openslide expects
 def openslidedata(manifest):
     for img in manifest:
         img['location'] = img['location'] or img['filename'] or img['file']
@@ -63,7 +65,7 @@ with open(args.f, 'r') as f:
     else:
         raise NotImplementedError("Extension: " + ext + " Unsupported")
 
-# if it's slide, do the slide info fill in
+# perform slide lookup for results, as applicable
 if (args.i == "slide"):
     manifest = openslidedata(manifest)
 else:
@@ -71,9 +73,9 @@ else:
 
 # perform validation (!!)
 print("[WARNING] -- Validation not Implemented")
-# perform slide lookup for results, as applicable
 
-# if dest is file, then write them
+
+# take appropriate destination action
 if (args.o == "jsonfile"):
     with open(args.d, 'w') as f:
         json.dump(manifest, f)
@@ -83,7 +85,16 @@ elif (args.o == "mongo"):
     col = db[args.i]
     col.insert_many(manifest)
 elif (args.o == "api"):
-    raise NotImplementedError("Output type: " + args.o + " not yet implemented")
+    x = requests.post(args.d, json=manifest)
+    # if we get a 401, ask the user for a token
+    retry = True
+    while (x.status_code == 401 and retry):
+        token = input("API returned 401, try a (different) token? : ")
+        if (token and token != "no" and token != "n"):
+            x = requests.post(args.d, json=manifest, auth=token)
+        else:
+            retry = False
+    x.raise_for_status()
 elif (args.o == "pathdb"):
     raise NotImplementedError("Output type: " + args.o + " not yet implemented")
 else:

@@ -15,11 +15,13 @@ parser.add_argument('-i', type=str, default="slide", choices=['slide', 'heatmap'
 parser.add_argument('-f', type=str, default="manifest.csv",
                     help='Input file')
 # read in dest type
-parser.add_argument('-o', type=str, default="mongo", choices=['mongo', 'file', 'api', 'pathdb'],
+parser.add_argument('-o', type=str, default="mongo", choices=['mongo', 'jsonfile', 'api', 'pathdb'],
                     help='Output destination type')
 # read in dest uri or equivalent
 parser.add_argument('-d', type=str, default="ca-mongo",
                     help='Output destination')
+# perform slide lookups for mongo or pathdb
+parser.add_argument('--lookup', type=str, help='Lookup slide id for results')
 
 args = parser.parse_args()
 print(args)
@@ -60,8 +62,19 @@ with open(args.f, 'r') as f:
 # if it's slide, do the slide info fill in
 if (args.i == "slide"):
     manifest = openslidedata(manifest)
+else:
+    print("[WARNING] -- Slide id lookup not implemented")
 
 # perform validation (!!)
+print("[WARNING] -- Validation not Implemented")
+# perform slide lookup for results, as applicable
+
+# if dest is file, then write them
+if(args.o == "jsonfile"):
+    with open(args.d, 'w') as f:
+        json.dump(manifest, f)
+else:
+    raise NotImplementedError("Output type: " + args.o + " not yet implemented")
 
 # if dest is mongo, connect
 
@@ -69,5 +82,3 @@ if (args.i == "slide"):
 # ^^ if 401, ask for a token
 
 # if dest is pathdb, ask for token
-
-# if dest is file, then write them

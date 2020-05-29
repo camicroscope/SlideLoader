@@ -25,8 +25,11 @@ parser.add_argument('-d', type=str, default="mongodb://ca-mongo:27017/",
 # read in mongo database
 parser.add_argument('-db', type=str, default="camic",
                     help='For mongo, the db to use')
-# perform slide lookups for mongo or pathdb
-parser.add_argument('--lookup', type=str, help='Lookup slide id for results')
+# read in lookup type
+parser.add_argument('-lt', type=str, help='Slide ID lookup type', default="mongo", choices=['mongo', 'jsonfile', 'api', 'pathdb'])
+# read in lookup uri or equivalent
+parser.add_argument('-ld', type=str, default="mongodb://ca-mongo:27017/",
+                    help='Slide ID lookup source')
 
 args = parser.parse_args()
 print(args)
@@ -69,8 +72,22 @@ with open(args.f, 'r') as f:
 if (args.i == "slide"):
     manifest = openslidedata(manifest)
 else:
-    if (args.lookup):
-        raise NotImplementedError("Slide id lookup not implemented")
+    raise NotImplementedError("Slide id lookup not implemented")
+    if (args.lt == "api"):
+        for x in manifest:
+            # TODO get slide ref from manifest
+            r = requests.get(args.ld)
+            r.json()
+            # put slide id in manifest
+    if (args.lt == "mongo"):
+        pass
+    if (args.lt == "pathdb"):
+        pass
+    if (args.lt == "jsonfile"):
+        with open(args.ld, 'r') as f:
+            slide_map = json.load(manifest, f)
+            # TODO use
+
 
 # perform validation (!!)
 print("[WARNING] -- Validation not Implemented")

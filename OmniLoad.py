@@ -69,7 +69,8 @@ with open(args.f, 'r') as f:
 if (args.i == "slide"):
     manifest = openslidedata(manifest)
 else:
-    print("[WARNING] -- Slide id lookup not implemented")
+    if (args.lookup):
+        raise NotImplementedError("Slide id lookup not implemented")
 
 # perform validation (!!)
 print("[WARNING] -- Validation not Implemented")

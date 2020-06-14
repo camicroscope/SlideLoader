@@ -311,7 +311,7 @@ def download_file(userFolder):
     path = app.config['DATASET_FOLDER']+userFolder+'/spritesheet/'
     return flask.send_from_directory(path, 'dataset.zip', as_attachment=True)
 
-# To the the user-specific useless files after download complete
+# To delete the the user-specific useless files after download is complete
 @app.route('/workbench/deleteDataset', methods=['POST'])
 def deleteDataset():
     data = flask.request.get_json()

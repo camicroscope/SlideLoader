@@ -19,6 +19,7 @@ import dev_utils
 import requests
 import zipfile
 import csv 
+import pathlib
 
 try:
     from io import BytesIO
@@ -230,7 +231,8 @@ def urlUploadStatus():
         return flask.Response(json.dumps({"uploaded": "False"}), status=200)
 
 
-## Workbench Dataset Creation help-routes
+
+# Workbench Dataset Creation help-routes
 
 # Route to receive base64 encoded zip files.
 # Files are extracted and patches.csv is read and label details are sent back
@@ -250,8 +252,15 @@ def getLabelsZips():
         file.seek(0)
         file.write(fileData)
         file.close()
+        if(zipfile.is_zipfile(tmppath) == False):
+            deleteDataset(userFolder)
+            return flask.Response(json.dumps({'error': 'Not a valid zip file/files'}), status=400)
         with zipfile.ZipFile(tmppath, 'r') as zip_ref:
             zip_ref.extractall(tmppath[0:-4])
+        csvFile = pathlib.Path(tmppath[0:-4]+'/patches.csv')
+        if not csvFile.is_file():
+            deleteDataset(userFolder)
+            return flask.Response(json.dumps({'error': 'Not a valid labels zip/zips'}), status=400)
         csvFile = tmppath[0:-4]+'/patches.csv'
         with open(csvFile, 'r') as data1:
             i = 0
@@ -266,7 +275,8 @@ def getLabelsZips():
                 i += 1
     return flask.Response(json.dumps(labelsData), status=200)
 
-# Route to organise the extracted zip file data according to user sent customized labels
+
+# Route to organise the extracted zip file data according to user sent customized labels and create a spritesheet
 # Link to download the dataset.zip is sent back to the user
 @app.route('/workbench/generateSprite', methods=['POST'])
 def generateSprite():
@@ -287,6 +297,10 @@ def generateSprite():
                         if not os.path.isdir(app.config['DATASET_FOLDER']+userFolder+'/spritesheet/'+line[2]):
                             os.makedirs(
                                 app.config['DATASET_FOLDER']+userFolder+'/spritesheet/'+line[2])
+                        file = pathlib.Path(path+line[8][1:])
+                        if not file.is_file():
+                            deleteDataset(userFolder)
+                            return flask.Response(json.dumps({'error': 'Images are missing from one or more zip files'}), status=400)
                         file = path+line[8][1:]
                         fileName = ''.join(random.choice(
                             string.ascii_lowercase + string.digits) for _ in range(40))
@@ -305,18 +319,18 @@ def generateSprite():
     download_file(userFolder)
     return flask.Response(json.dumps({'status': 'done', 'userFolder': userFolder, 'download': download_link}), status=200)
 
+
 # Dynamic download route for dataset.zip
 @app.route('/workbench/sprite/download/<userFolder>')
 def download_file(userFolder):
     path = app.config['DATASET_FOLDER']+userFolder+'/spritesheet/'
     return flask.send_from_directory(path, 'dataset.zip', as_attachment=True)
 
+
 # To the the user-specific useless files after download complete
-@app.route('/workbench/deleteDataset', methods=['POST'])
-def deleteDataset():
-    data = flask.request.get_json()
-    userFolder = data['userFolder']
-    if '/' in userFolder or '..' in userFolder:
+@app.route('/workbench/deleteDataset/<userFolder>', methods=['POST'])
+def deleteDataset(userFolder):
+    if '/' in userFolder or '..' in userFolder or len(userFolder) != 20:
         return flask.Response(json.dumps({"deleted": "false", 'message': 'Traversal detected'}), status=403)
     shutil.rmtree(app.config['DATASET_FOLDER']+userFolder)
     return flask.Response(json.dumps({"deleted": "true"}), status=200)

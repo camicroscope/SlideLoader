@@ -4,6 +4,7 @@ import numpy as np
 import sys
 import os
 
+
 def createSpritesheet(datasetPath, labelsNames):
     # print(Path(__file__).parent.absolute())
     # Constants
@@ -22,7 +23,7 @@ def createSpritesheet(datasetPath, labelsNames):
     print(imageCount, file=sys.stderr)
     new_im = Image.new('RGB', (SPRITE_SIZE*SPRITE_SIZE, imageCount))
 
-    labels = [0]*(len(labelsNames));
+    labels = [0]*(len(labelsNames))
     # print(len(sys.argv))
 
     # Load the training sprite by looping over every image file
@@ -52,7 +53,6 @@ def createSpritesheet(datasetPath, labelsNames):
                 y_data.append(i)
                 labels[i-1] += 1
 
-
     print(labels)
 
     #  randomize X and Y the same way before making data
@@ -71,14 +71,13 @@ def createSpritesheet(datasetPath, labelsNames):
         for i in range(1, len(labelsNames)+1):
             if shuffled_y[y_offset] == i:
                 for j in range(1, len(labelsNames)+1):
-                    if j==i:
+                    if j == i:
                         one_hot_y.append(1)
                     else:
                         one_hot_y.append(0)
         # build 1-hot encoded answer key
 
         y_offset += 1
-
 
     # Save answers file (Y)
     newFile = open(datasetPath+'/spritesheet/labels.bin', "wb")
@@ -101,5 +100,4 @@ def createSpritesheet(datasetPath, labelsNames):
     #             pixdata[x, y] = (255, 255, 255)
 
     new_im.save(datasetPath+'/spritesheet/data.jpg')
-
 

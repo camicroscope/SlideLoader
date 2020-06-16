@@ -327,7 +327,7 @@ def download_file(userFolder):
     return flask.send_from_directory(path, 'dataset.zip', as_attachment=True)
 
 
-# To the the user-specific useless files after download complete
+# To delete the the user-specific useless files after download is complete
 @app.route('/workbench/deleteDataset/<userFolder>', methods=['POST'])
 def deleteDataset(userFolder):
     if '/' in userFolder or '..' in userFolder or len(userFolder) != 20:

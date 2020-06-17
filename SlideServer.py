@@ -20,6 +20,7 @@ import requests
 import zipfile
 import csv 
 import pathlib
+import logging
 
 try:
     from io import BytesIO
@@ -231,7 +232,6 @@ def urlUploadStatus():
         return flask.Response(json.dumps({"uploaded": "False"}), status=200)
 
 
-
 # Workbench Dataset Creation help-routes
 
 # Route to receive base64 encoded zip files.
@@ -276,6 +276,44 @@ def getLabelsZips():
     return flask.Response(json.dumps(labelsData), status=200)
 
 
+# Route to receive base64 encoded zip file for custom dataset.
+@app.route('/workbench/getCustomData', methods=['POST'])
+def getCustomData():
+    data = flask.request.get_json()
+    fileName = data['fileNames'][0]
+    userFolder = ''.join(random.choice(
+    string.ascii_uppercase + string.digits) for _ in range(20))
+    if not os.path.isdir(app.config['DATASET_FOLDER']+userFolder):
+        os.makedirs(app.config['DATASET_FOLDER']+userFolder)
+    path = os.path.join(app.config['DATASET_FOLDER']+userFolder+'/', fileName)
+    fileData = base64.b64decode(data['files'][0])
+    file = open(path, "ab")
+    file.seek(0)
+    file.write(fileData)
+    file.close()
+    if(zipfile.is_zipfile(path) == False):
+        deleteDataset(userFolder)
+        return flask.Response(json.dumps({'error': 'Not a valid zip file/files'}), status=400)
+    file = zipfile.ZipFile(path, 'r');
+    # app.logger.info(file.namelist())
+    contents = file.namelist()
+    labelsData = {'labels': [], 'counts': [], 'userFolder': userFolder}
+    for item in contents:
+        if '/' not in item:
+            return flask.Response(json.dumps({'error': 'zip should contain only folders!'}), status=400)
+        if item.endswith('/') == False and item.endswith('.jpg') == False and item.endswith('.png') == False:
+            return flask.Response(json.dumps({'error': 'Dataset should have only png/jpg files!'}), status=400)
+        if item.split('/')[0] not in labelsData['labels']:
+            labelsData['labels'].append(item.split('/')[0])
+    for label in labelsData['labels']:
+        count = -1
+        for item in contents:
+            if item.startswith(label+'/'):
+                count+=1
+        labelsData['counts'].append(count)
+    return flask.Response(json.dumps(labelsData), status=200)
+
+
 # Route to organise the extracted zip file data according to user sent customized labels and create a spritesheet
 # Link to download the dataset.zip is sent back to the user
 @app.route('/workbench/generateSprite', methods=['POST'])
@@ -285,6 +323,10 @@ def generateSprite():
     labels = data['labels']
     included = data['included']
     fileNames = data['fileNames']
+    selectedLabels = []
+    for i in range(len(labels)):
+        if included[i] == True:
+            selectedLabels.append(labels[i])
     for i in range(len(fileNames)):
         path = os.path.join(
             app.config['DATASET_FOLDER']+userFolder+'/', fileNames[i])[0:-4]
@@ -292,8 +334,7 @@ def generateSprite():
         with open(csvFile, 'r') as data1:
             i = 0
             for line in csv.reader(data1):
-                if i != 0 and line[2] != '':
-                    if line[2] in labels:
+                if i != 0 and line[2] != '' and line[2] in selectedLabels:
                         if not os.path.isdir(app.config['DATASET_FOLDER']+userFolder+'/spritesheet/'+line[2]):
                             os.makedirs(
                                 app.config['DATASET_FOLDER']+userFolder+'/spritesheet/'+line[2])
@@ -308,9 +349,43 @@ def generateSprite():
                             '/spritesheet/'+line[2]+'/'+fileName+'.jpg'
                         shutil.move(file, newFile)
                 i += 1
-    createSpritesheet(app.config['DATASET_FOLDER']+userFolder, labels)
+    createSpritesheet(app.config['DATASET_FOLDER']+userFolder, selectedLabels)
     zipObj = zipfile.ZipFile(
         app.config['DATASET_FOLDER']+userFolder+'/spritesheet/dataset.zip', 'w')
+    zipObj.write(app.config['DATASET_FOLDER'] +
+                 userFolder+'/spritesheet/data.jpg', '/data.jpg')
+    zipObj.write(app.config['DATASET_FOLDER']+userFolder +
+                 '/spritesheet/labels.bin', '/labels.bin')
+    download_link = '/workbench/sprite/download/'+userFolder
+    download_file(userFolder)
+    return flask.Response(json.dumps({'status': 'done', 'userFolder': userFolder, 'download': download_link}), status=200)
+
+
+# Route to extract images and create the spritesheet according to user defined labels
+@app.route('/workbench/generateCustomSprite', methods=['POST'])
+def generateCustomSprite():
+    data = flask.request.get_json()
+    userFolder = data['userFolder']
+    labels = data['labels']
+    included = data['included']
+    fileName = data['fileNames'][0]
+    selectedLabels = []
+    for i in range(len(labels)):
+        if included[i] == True:
+            selectedLabels.append(labels[i])
+    path = os.path.join(
+            app.config['DATASET_FOLDER']+userFolder+'/', fileName)
+    if not os.path.isdir(app.config['DATASET_FOLDER']+userFolder+'/spritesheet'):
+        os.makedirs(app.config['DATASET_FOLDER']+userFolder+'/spritesheet')
+    file = zipfile.ZipFile(path, 'r');
+    contents = file.namelist()
+    selectedFiles = []
+    for item in contents:
+        if included[labels.index(item.split('/')[0])] == True:
+            selectedFiles.append(item)
+    file.extractall(app.config['DATASET_FOLDER']+userFolder+'/spritesheet/', selectedFiles)
+    createSpritesheet(app.config['DATASET_FOLDER']+userFolder, selectedLabels)
+    zipObj = zipfile.ZipFile(app.config['DATASET_FOLDER']+userFolder+'/spritesheet/dataset.zip', 'w')
     zipObj.write(app.config['DATASET_FOLDER'] +
                  userFolder+'/spritesheet/data.jpg', '/data.jpg')
     zipObj.write(app.config['DATASET_FOLDER']+userFolder +
@@ -331,6 +406,6 @@ def download_file(userFolder):
 @app.route('/workbench/deleteDataset/<userFolder>', methods=['POST'])
 def deleteDataset(userFolder):
     if '/' in userFolder or '..' in userFolder or len(userFolder) != 20:
-        return flask.Response(json.dumps({"deleted": "false", 'message': 'Traversal detected'}), status=403)
+        return flask.Response(json.dumps({"deleted": "false", 'message': 'Traversal detected or invalid foldername'}), status=403)
     shutil.rmtree(app.config['DATASET_FOLDER']+userFolder)
     return flask.Response(json.dumps({"deleted": "true"}), status=200)

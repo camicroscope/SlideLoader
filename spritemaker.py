@@ -18,8 +18,17 @@ def createSpritesheet(datasetPath, labelsNames):
     final_image = np.array([])
     y_offset = 0
     imageCount = 0
+    imageFiles = []
     for image_file in Path(TRAINING_PATH).glob("**/*.jpg"):
         imageCount += 1
+        imageFiles.append(image_file)
+    for image_file in Path(TRAINING_PATH).glob("**/*.png"):
+        imageCount += 1
+        imageFiles.append(image_file)
+    for image_file in Path(TRAINING_PATH).glob("**/*.jpeg"):
+        imageCount += 1
+        imageFiles.append(image_file)
+    
     print(imageCount, file=sys.stderr)
     new_im = Image.new('RGB', (SPRITE_SIZE*SPRITE_SIZE, imageCount))
 
@@ -27,7 +36,7 @@ def createSpritesheet(datasetPath, labelsNames):
     # print(len(sys.argv))
 
     # Load the training sprite by looping over every image file
-    for image_file in Path(TRAINING_PATH).glob("**/*.jpg"):
+    for image_file in imageFiles:
 
         # Load the current image file
         src_image = Image.open(image_file)

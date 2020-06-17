@@ -361,7 +361,7 @@ def generateSprite():
     return flask.Response(json.dumps({'status': 'done', 'userFolder': userFolder, 'download': download_link}), status=200)
 
 
-# Route to extract images and create the spritesheet according to user defined labels
+# Route to extract images and create the spritesheet according to user defined labels incase of custom data
 @app.route('/workbench/generateCustomSprite', methods=['POST'])
 def generateCustomSprite():
     data = flask.request.get_json()

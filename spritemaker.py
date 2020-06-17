@@ -5,17 +5,17 @@ import sys
 import os
 
 
-def createSpritesheet(datasetPath, labelsNames):
+def createSpritesheet(datasetPath, labelsNames, width, height):
     # print(Path(__file__).parent.absolute())
     # Constants
     TRAINING_PATH = datasetPath+'/spritesheet/'
-    SPRITE_SIZE = 60
+    # SPRITE_SIZE = 60
     print(TRAINING_PATH, file=sys.stderr)
 
     # Initialization
     x_data = []
     y_data = []
-    final_image = np.array([])
+    # final_image = np.array([])
     y_offset = 0
     imageCount = 0
     imageFiles = []
@@ -28,9 +28,9 @@ def createSpritesheet(datasetPath, labelsNames):
     for image_file in Path(TRAINING_PATH).glob("**/*.jpeg"):
         imageCount += 1
         imageFiles.append(image_file)
-    
+
     print(imageCount, file=sys.stderr)
-    new_im = Image.new('RGB', (SPRITE_SIZE*SPRITE_SIZE, imageCount))
+    new_im = Image.new('RGB', (width*height, imageCount))
 
     labels = [0]*(len(labelsNames))
     # print(len(sys.argv))
@@ -41,11 +41,11 @@ def createSpritesheet(datasetPath, labelsNames):
         # Load the current image file
         src_image = Image.open(image_file)
         # make it smaller
-        downsized = src_image.resize((SPRITE_SIZE, SPRITE_SIZE))
+        downsized = src_image.resize((width, height))
 
         # get 1px high version
         pixels = list(downsized.getdata())
-        smoosh = Image.new('RGB', (SPRITE_SIZE * SPRITE_SIZE, 1))
+        smoosh = Image.new('RGB', (width * height, 1))
         smoosh.putdata(pixels)
 
         # store image
@@ -91,14 +91,14 @@ def createSpritesheet(datasetPath, labelsNames):
     # Save answers file (Y)
     newFile = open(datasetPath+'/spritesheet/labels.bin', "wb")
     newFileByteArray = bytearray(one_hot_y)
-    bytesWritte = newFile.write(newFileByteArray)
+    bytesWrite = newFile.write(newFileByteArray)
     # should be num classes * original answer key size
-    assert bytesWritte == ((len(labelsNames)) * len(y_data))
+    assert bytesWrite == ((len(labelsNames)) * len(y_data))
 
     # Save Data Sprite (X)
     # new_im = new_im.convert("RGBA")
 
-    pixdata = new_im.load()
+    # pixdata = new_im.load()
 
     # Clean the background noise, if color != white, then set to black.
     # change with your color
@@ -109,4 +109,3 @@ def createSpritesheet(datasetPath, labelsNames):
     #             pixdata[x, y] = (255, 255, 255)
 
     new_im.save(datasetPath+'/spritesheet/data.jpg')
-

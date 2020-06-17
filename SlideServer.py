@@ -294,7 +294,7 @@ def getCustomData():
     if(zipfile.is_zipfile(path) == False):
         deleteDataset(userFolder)
         return flask.Response(json.dumps({'error': 'Not a valid zip file/files'}), status=400)
-    file = zipfile.ZipFile(path, 'r');
+    file = zipfile.ZipFile(path, 'r')
     # app.logger.info(file.namelist())
     contents = file.namelist()
     labelsData = {'labels': [], 'counts': [], 'userFolder': userFolder}
@@ -323,6 +323,8 @@ def generateSprite():
     labels = data['labels']
     included = data['included']
     fileNames = data['fileNames']
+    height = int(data['height'])
+    width = int(data['width'])
     selectedLabels = []
     for i in range(len(labels)):
         if included[i] == True:
@@ -349,7 +351,10 @@ def generateSprite():
                             '/spritesheet/'+line[2]+'/'+fileName+'.jpg'
                         shutil.move(file, newFile)
                 i += 1
-    createSpritesheet(app.config['DATASET_FOLDER']+userFolder, selectedLabels)
+    try:
+        createSpritesheet(app.config['DATASET_FOLDER']+userFolder, selectedLabels, width, height)
+    except:
+        return flask.Response(json.dumps({'error': str(sys.exc_info()[0])}), status=400)
     zipObj = zipfile.ZipFile(
         app.config['DATASET_FOLDER']+userFolder+'/spritesheet/dataset.zip', 'w')
     zipObj.write(app.config['DATASET_FOLDER'] +
@@ -369,6 +374,8 @@ def generateCustomSprite():
     labels = data['labels']
     included = data['included']
     fileName = data['fileNames'][0]
+    height = int(data['height'])
+    width = int(data['width'])
     selectedLabels = []
     for i in range(len(labels)):
         if included[i] == True:
@@ -377,14 +384,17 @@ def generateCustomSprite():
             app.config['DATASET_FOLDER']+userFolder+'/', fileName)
     if not os.path.isdir(app.config['DATASET_FOLDER']+userFolder+'/spritesheet'):
         os.makedirs(app.config['DATASET_FOLDER']+userFolder+'/spritesheet')
-    file = zipfile.ZipFile(path, 'r');
+    file = zipfile.ZipFile(path, 'r')
     contents = file.namelist()
     selectedFiles = []
     for item in contents:
         if included[labels.index(item.split('/')[0])] == True:
             selectedFiles.append(item)
     file.extractall(app.config['DATASET_FOLDER']+userFolder+'/spritesheet/', selectedFiles)
-    createSpritesheet(app.config['DATASET_FOLDER']+userFolder, selectedLabels)
+    try:
+        createSpritesheet(app.config['DATASET_FOLDER']+userFolder, selectedLabels, width, height)
+    except:
+         return flask.Response(json.dumps({'error': str(sys.exc_info()[0])}), status=400)
     zipObj = zipfile.ZipFile(app.config['DATASET_FOLDER']+userFolder+'/spritesheet/dataset.zip', 'w')
     zipObj.write(app.config['DATASET_FOLDER'] +
                  userFolder+'/spritesheet/data.jpg', '/data.jpg')

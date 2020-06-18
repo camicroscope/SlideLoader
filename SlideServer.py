@@ -355,12 +355,17 @@ def generateSprite():
         createSpritesheet(app.config['DATASET_FOLDER']+userFolder, selectedLabels, width, height)
     except:
         return flask.Response(json.dumps({'error': str(sys.exc_info()[0])}), status=400)
+    with open(app.config['DATASET_FOLDER']+userFolder+'/spritesheet/labelnames.csv', 'w', newline='') as labelsnamesCSVfile:
+        writer = csv.writer(labelsnamesCSVfile)
+        writer.writerow(selectedLabels)
     zipObj = zipfile.ZipFile(
         app.config['DATASET_FOLDER']+userFolder+'/spritesheet/dataset.zip', 'w')
     zipObj.write(app.config['DATASET_FOLDER'] +
                  userFolder+'/spritesheet/data.jpg', '/data.jpg')
     zipObj.write(app.config['DATASET_FOLDER']+userFolder +
                  '/spritesheet/labels.bin', '/labels.bin')
+    zipObj.write(app.config['DATASET_FOLDER']+userFolder +
+                 '/spritesheet/labelnames.csv', '/labelnames.csv')
     download_link = '/workbench/sprite/download/'+userFolder
     download_file(userFolder)
     return flask.Response(json.dumps({'status': 'done', 'userFolder': userFolder, 'download': download_link}), status=200)
@@ -395,11 +400,16 @@ def generateCustomSprite():
         createSpritesheet(app.config['DATASET_FOLDER']+userFolder, selectedLabels, width, height)
     except:
          return flask.Response(json.dumps({'error': str(sys.exc_info()[0])}), status=400)
+    with open(app.config['DATASET_FOLDER']+userFolder+'/spritesheet/labelnames.csv', 'w', newline='') as labelsnamesCSVfile:
+        writer = csv.writer(labelsnamesCSVfile)
+        writer.writerow(selectedLabels)
     zipObj = zipfile.ZipFile(app.config['DATASET_FOLDER']+userFolder+'/spritesheet/dataset.zip', 'w')
     zipObj.write(app.config['DATASET_FOLDER'] +
                  userFolder+'/spritesheet/data.jpg', '/data.jpg')
     zipObj.write(app.config['DATASET_FOLDER']+userFolder +
                  '/spritesheet/labels.bin', '/labels.bin')
+    zipObj.write(app.config['DATASET_FOLDER']+userFolder +
+                 '/spritesheet/labelnames.csv', '/labelnames.csv')
     download_link = '/workbench/sprite/download/'+userFolder
     download_file(userFolder)
     return flask.Response(json.dumps({'status': 'done', 'userFolder': userFolder, 'download': download_link}), status=200)

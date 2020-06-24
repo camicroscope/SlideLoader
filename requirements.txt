@@ -3,3 +3,4 @@ flask
 Werkzeug
 flask-cors
 requests
+numpy

@@ -492,6 +492,7 @@ def roiExtract():
     data = flask.request.get_json()
     pred = data['predictions']
     filename = data['filename']
+    step = data['patchsize']
     fn =filename.split(".")[0] + ".jpg"
     if  os.path.isdir("/images/roiDownload"):
         shutil.rmtree(app.config['ROI_FOLDER'])
@@ -501,7 +502,7 @@ def roiExtract():
     download_patches = zipfile.ZipFile(filepath, 'w')
     img = Image.open("/images/roiDownload/"+fn)
     for i in range(len(data['predictions'])):
-        img1 = img.crop((int(data['predictions'][i]['X']),int(data['predictions'][i]['Y']) , int(data['predictions'][i]['X'])+512,int(data['predictions'][i]['Y'])+512))
+        img1 = img.crop((int(data['predictions'][i]['X']),int(data['predictions'][i]['Y']) , int(data['predictions'][i]['X'])+int(step),int(data['predictions'][i]['Y'])+int(step)))
         img1.save("/images/roiDownload/"+str(data['predictions'][i]['cls'])+'_'+str(i)+'_'+ str(data['predictions'][i]['acc']*100)+".jpg")
         download_patches.write("/images/roiDownload/"+str(data['predictions'][i]['cls'])+'_'+str(i)+'_'+ str(data['predictions'][i]['acc']*100)+".jpg" , "/patches/"+
         str(data['predictions'][i]['cls'])+"/"+str(data['predictions'][i]['cls'])+'_'+str(i)+'_'+ str(data['predictions'][i]['acc']*100)+".jpg")

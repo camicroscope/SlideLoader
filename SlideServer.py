@@ -9,7 +9,7 @@ import pyvips
 from os import listdir
 from os.path import isfile, join
 from spritemaker import createSpritesheet
-
+from PIL import Image
 import urllib
 import flask
 import flask_cors
@@ -38,6 +38,7 @@ app.config['UPLOAD_FOLDER'] = "/images/"
 app.config['TEMP_FOLDER'] = "/images/uploading/"
 app.config['TOKEN_SIZE'] = 10
 app.config['SECRET_KEY'] = os.urandom(24)
+app.config['ROI_FOLDER'] = "/images/roiDownload"
 
 ALLOWED_EXTENSIONS = set(['svs', 'tif', 'tiff', 'vms', 'vmu', 'ndpi', 'scn', 'mrxs', 'bif', 'svslide'])    
 
@@ -429,3 +430,95 @@ def deleteDataset(userFolder):
         return flask.Response(json.dumps({"deleted": "false", 'message': 'Traversal detected or invalid foldername'}), status=403)
     shutil.rmtree(app.config['DATASET_FOLDER']+userFolder)
     return flask.Response(json.dumps({"deleted": "true"}), status=200)
+
+
+# Helper function for converting slides into jpg 
+def _get_concat_h(img_lst):
+    width, height, h = sum([img.width for img in img_lst]), img_lst[0].height, 0
+    dst = Image.new('RGB', (width, height))
+    for img in img_lst:
+        dst.paste(img, (h, 0))
+        h += img.width
+    return dst
+
+# Helper function for converting slides into jpg 
+def _get_concat_v(img_lst):
+    width, height, v = img_lst[0].width, sum([img.height for img in img_lst]), 0
+    dst = Image.new('RGB', (width, height))
+    for img in img_lst:
+        dst.paste(img, (0, v))
+        v += img.height
+    return dst
+
+# FUnction to convert slides into jpg images
+def convert(fname, input_dir , output_dir):
+    UNIT_X, UNIT_Y = 5000, 5000
+    try:
+        
+        save_name = fname.split(".")[0] + ".jpg"
+        os_obj = openslide.OpenSlide(input_dir+"/"+fname)
+        w, h = os_obj.dimensions
+        w_rep, h_rep = int(w/UNIT_X)+1, int(h/UNIT_Y)+1
+        w_end, h_end = w%UNIT_X, h%UNIT_Y
+        w_size, h_size = UNIT_X, UNIT_Y
+        w_start, h_start = 0, 0
+        v_lst = []
+        for i in range(h_rep):
+            if i == h_rep-1:
+                h_size = h_end 
+            h_lst = []
+            for j in range(w_rep):
+                if j == w_rep-1:
+                    w_size = w_end
+                img = os_obj.read_region((w_start,h_start), 0, (w_size,h_size))
+                img = img.convert("RGB")
+                h_lst.append(img)
+                w_start += UNIT_X
+            v_lst.append(h_lst)
+            w_size = UNIT_X
+            h_start += UNIT_Y
+            w_start = 0
+        concat_h = [_get_concat_h(v) for v in v_lst]
+        concat_hv = _get_concat_v(concat_h)
+        concat_hv.save(output_dir+"/"+save_name)
+    except:
+        print("Can't open image file : %s"%fname)
+        traceback.print_exc()
+    return    
+
+# Route to extract the patches using the predictions recieved 
+@app.route('/roiExtract', methods = ['POST'])
+def roiExtract():
+    data = flask.request.get_json()
+    pred = data['predictions']
+    filename = data['filename']
+    step = data['patchsize']
+    fn =filename.split(".")[0] + ".jpg"
+    if  os.path.isdir("/images/roiDownload"):
+        shutil.rmtree(app.config['ROI_FOLDER'])
+    os.makedirs("/images/roiDownload")
+    filepath = "/images/roiDownload/roi_Download" + filename + ".zip"
+    convert(filename, "/images","/images/roiDownload")
+    download_patches = zipfile.ZipFile(filepath, 'w')
+    img = Image.open("/images/roiDownload/"+fn)
+    for i in range(len(data['predictions'])):
+        img1 = img.crop((int(data['predictions'][i]['X']),int(data['predictions'][i]['Y']) , int(data['predictions'][i]['X'])+int(step),int(data['predictions'][i]['Y'])+int(step)))
+        img1.save("/images/roiDownload/"+str(data['predictions'][i]['cls'])+'_'+str(i)+'_'+ str(data['predictions'][i]['acc']*100)+".jpg")
+        download_patches.write("/images/roiDownload/"+str(data['predictions'][i]['cls'])+'_'+str(i)+'_'+ str(data['predictions'][i]['acc']*100)+".jpg" , "/patches/"+
+        str(data['predictions'][i]['cls'])+"/"+str(data['predictions'][i]['cls'])+'_'+str(i)+'_'+ str(data['predictions'][i]['acc']*100)+".jpg")
+        
+    download_patches.close()
+
+    # img = openslide.OpenSlide.read_region((0,0),0,(100,100))
+    # img = slide.open_image(img_path)
+    # res= { "data" :"" }
+    # res['data']= pred
+    return flask.Response(json.dumps({"extracted": "true"}), status=200)
+    
+# Route to send back the extracted
+@app.route('/roiextract/<file_name>')
+def roiextract(file_name):
+
+    return flask.send_from_directory(app.config["ROI_FOLDER"],filename=file_name, as_attachment=True, cache_timeout=0 )
+
+

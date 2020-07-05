@@ -302,9 +302,11 @@ def getCustomData():
         labelsData = {'labels': [], 'counts': [], 'userFolder': userFolder}
         for item in contents:
             if '/' not in item:
+                deleteDataset(userFolder)
                 return flask.Response(json.dumps({'error': 'zip should contain only folders!'}), status=400)
             if item.endswith('/') == False and item.endswith('.jpg') == False and item.endswith('.jpeg') == False and item.endswith('.png') == False and item.endswith('.tif') == False and item.endswith('.tiff') == False:
-                return flask.Response(json.dumps({'error': 'Dataset should have only png/jpg files!'}), status=400)
+                deleteDataset(userFolder)
+                return flask.Response(json.dumps({'error': 'Dataset zip should have only png/jpg/tif files!'}), status=400)
             if item.split('/')[0] not in labelsData['labels']:
                 labelsData['labels'].append(item.split('/')[0])
         for label in labelsData['labels']:

@@ -281,38 +281,44 @@ def getLabelsZips():
 @app.route('/workbench/getCustomData', methods=['POST'])
 def getCustomData():
     data = flask.request.get_json()
-    fileName = data['fileNames'][0]
-    userFolder = ''.join(random.choice(
-    string.ascii_uppercase + string.digits) for _ in range(20))
+    fileName = data['fileName']
+    userFolder = data['userFolder']
     if not os.path.isdir(app.config['DATASET_FOLDER']+userFolder):
         os.makedirs(app.config['DATASET_FOLDER']+userFolder)
     path = os.path.join(app.config['DATASET_FOLDER']+userFolder+'/', fileName)
-    fileData = base64.b64decode(data['files'][0])
+    fileData = base64.b64decode(data['file'])
+    offset = data['offset']
     file = open(path, "ab")
-    file.seek(0)
+    file.seek(int(offset))
     file.write(fileData)
     file.close()
-    if(zipfile.is_zipfile(path) == False):
-        deleteDataset(userFolder)
-        return flask.Response(json.dumps({'error': 'Not a valid zip file/files'}), status=400)
-    file = zipfile.ZipFile(path, 'r')
-    # app.logger.info(file.namelist())
-    contents = file.namelist()
-    labelsData = {'labels': [], 'counts': [], 'userFolder': userFolder}
-    for item in contents:
-        if '/' not in item:
-            return flask.Response(json.dumps({'error': 'zip should contain only folders!'}), status=400)
-        if item.endswith('/') == False and item.endswith('.jpg') == False and item.endswith('.png') == False:
-            return flask.Response(json.dumps({'error': 'Dataset should have only png/jpg files!'}), status=400)
-        if item.split('/')[0] not in labelsData['labels']:
-            labelsData['labels'].append(item.split('/')[0])
-    for label in labelsData['labels']:
-        count = -1
+    final = data['final']
+    if(final == 'true'):
+        if(zipfile.is_zipfile(path) == False):
+            deleteDataset(userFolder)
+            return flask.Response(json.dumps({'error': 'Not a valid zip file/files'}), status=400)
+        file = zipfile.ZipFile(path, 'r')
+        # app.logger.info(file.namelist())
+        contents = file.namelist()
+        labelsData = {'labels': [], 'counts': [], 'userFolder': userFolder}
         for item in contents:
-            if item.startswith(label+'/'):
-                count+=1
-        labelsData['counts'].append(count)
-    return flask.Response(json.dumps(labelsData), status=200)
+            if '/' not in item:
+                deleteDataset(userFolder)
+                return flask.Response(json.dumps({'error': 'zip should contain only folders!'}), status=400)
+            if item.endswith('/') == False and item.endswith('.jpg') == False and item.endswith('.jpeg') == False and item.endswith('.png') == False and item.endswith('.tif') == False and item.endswith('.tiff') == False:
+                deleteDataset(userFolder)
+                return flask.Response(json.dumps({'error': 'Dataset zip should have only png/jpg/tif files!'}), status=400)
+            if item.split('/')[0] not in labelsData['labels']:
+                labelsData['labels'].append(item.split('/')[0])
+        for label in labelsData['labels']:
+            count = -1
+            for item in contents:
+                if item.startswith(label+'/'):
+                    count+=1
+            labelsData['counts'].append(count)
+        return flask.Response(json.dumps(labelsData), status=200)
+    else:
+        return flask.Response(json.dumps({'status' : 'pending'}), status=200)
 
 
 # Route to organise the extracted zip file data according to user sent customized labels and create a spritesheet

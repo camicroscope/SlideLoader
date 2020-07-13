@@ -47,7 +47,7 @@ def openslidedata(metadata):
     metadata['width'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_WIDTH, None)
     metadata['vendor'] = slideData.get(openslide.PROPERTY_NAME_VENDOR, None)
     metadata['level_count'] = int(slideData.get('level_count', 1))
-    metadata['objective'] = float(slideData.get("aperio.AppMag", None))
+    metadata['objective'] = float(slideData.get("aperio.AppMag", 0.0))
     metadata['md5sum'] = file_md5(metadata['location'])
     metadata['timestamp'] = time.time()
     thumbnail_size = config.get('thumbnail_size', None)

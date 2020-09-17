@@ -19,15 +19,12 @@ def createSpritesheet(datasetPath, labelsNames, width, height):
     y_offset = 0
     imageCount = 0
     imageFiles = []
-    for image_file in Path(TRAINING_PATH).glob("**/*.jpg"):
-        imageCount += 1
-        imageFiles.append(image_file)
-    for image_file in Path(TRAINING_PATH).glob("**/*.png"):
-        imageCount += 1
-        imageFiles.append(image_file)
-    for image_file in Path(TRAINING_PATH).glob("**/*.jpeg"):
-        imageCount += 1
-        imageFiles.append(image_file)
+
+    allowed_extentions = ['jpg', 'png', 'jpeg', 'tif', 'tiff']
+    for ext in allowed_extentions:
+        for image_file in Path(TRAINING_PATH).glob("**/*." + ext):
+            imageCount += 1
+            imageFiles.append(image_file)
 
     print(imageCount, file=sys.stderr)
     new_im = Image.new('RGB', (width*height, imageCount))

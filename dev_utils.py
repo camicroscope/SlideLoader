@@ -5,7 +5,7 @@ import requests
 
 import openslide
 
-post_url = "http://ca-data:9099/services/caMicroscope/Slide/submit/json"
+post_url = "http://ca-back:4010/data/Slide/post"
 
 
 

@@ -21,6 +21,9 @@ import zipfile
 import csv 
 import pathlib
 import logging
+from gDriveDownload import startDownload, afterUrlAuth, callApi
+from flask import after_this_request
+from threading import Thread
 
 try:
     from io import BytesIO
@@ -232,6 +235,33 @@ def urlUploadStatus():
     else:
         return flask.Response(json.dumps({"uploaded": "False"}), status=200)
 
+class getFile2(Thread):
+    def __init__(self, auth_url, local_server, wsgi_app, flow, creds):
+        Thread.__init__(self)
+        self.auth_url, self.local_server, self.wsgi_app, self.flow, self.creds = auth_url, local_server, wsgi_app, flow, creds
+
+    def run(self):
+        if(self.auth_url != None):
+            self.creds = afterUrlAuth(self.local_server, self.flow, self.wsgi_app)
+        listOfFiles = callApi(self.creds)
+        app.logger.info(listOfFiles)
+        # print(listOfFiles, file=sys.stderr) a
+
+# Route to return google-picker API credentials
+@app.route('/googleDriveUpload/getFile', methods=['POST'])
+def gDriveGetFile():
+        creds = None
+        auth_url, local_server, wsgi_app, flow, creds = startDownload()
+        thread_a = getFile2(auth_url, local_server, wsgi_app, flow, creds)
+        thread_a.start()
+        return flask.Response(json.dumps({"authURL": auth_url}), status=200)
+        
+
+# def getFile2(auth_url, local_server, wsgi_app, flow, creds):
+#     if(auth_url != None):
+#             creds = afterUrlAuth(local_server, flow, wsgi_app)
+#     listOfFiles = callApi(creds)
+#     print(listOfFiles, file=sys.stderr)
 
 # Workbench Dataset Creation help-routes
 

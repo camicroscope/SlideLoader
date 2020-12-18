@@ -24,6 +24,7 @@ RUN pip3 install -r requirements.txt
 
 
 EXPOSE 4000
+EXPOSE 4001
 
 #debug/dev only
 # ENV FLASK_APP SlideServer.py

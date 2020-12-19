@@ -21,7 +21,7 @@ import zipfile
 import csv 
 import pathlib
 import logging
-from gDriveDownload import startDownload, afterUrlAuth, callApi
+from gDriveDownload import start, afterUrlAuth, callApi
 from flask import after_this_request
 from threading import Thread
 
@@ -42,6 +42,7 @@ app.config['TEMP_FOLDER'] = "/images/uploading/"
 app.config['TOKEN_SIZE'] = 10
 app.config['SECRET_KEY'] = os.urandom(24)
 app.config['ROI_FOLDER'] = "/images/roiDownload"
+
 
 ALLOWED_EXTENSIONS = set(['svs', 'tif', 'tiff', 'vms', 'vmu', 'ndpi', 'scn', 'mrxs', 'bif', 'svslide'])    
 
@@ -235,33 +236,31 @@ def urlUploadStatus():
     else:
         return flask.Response(json.dumps({"uploaded": "False"}), status=200)
 
-class getFile2(Thread):
-    def __init__(self, auth_url, local_server, wsgi_app, flow, creds):
+class getFile(Thread):
+    def __init__(self, auth_url, local_server, wsgi_app, flow, creds, userId, fileId):
         Thread.__init__(self)
-        self.auth_url, self.local_server, self.wsgi_app, self.flow, self.creds = auth_url, local_server, wsgi_app, flow, creds
+        self.auth_url, self.local_server, self.wsgi_app, self.flow, self.creds, self.userId, self.fileId = auth_url, local_server, wsgi_app, flow, creds, userId, fileId
 
     def run(self):
         if(self.auth_url != None):
-            self.creds = afterUrlAuth(self.local_server, self.flow, self.wsgi_app)
-        listOfFiles = callApi(self.creds)
+            self.creds = afterUrlAuth(self.local_server, self.flow, self.wsgi_app, self.userId)
+        listOfFiles = callApi(self.creds, self.fileId)
         app.logger.info(listOfFiles)
-        # print(listOfFiles, file=sys.stderr) a
+        # print(listOfFiles, file=sys.stderr)
 
 # Route to return google-picker API credentials
 @app.route('/googleDriveUpload/getFile', methods=['POST'])
 def gDriveGetFile():
-        creds = None
-        auth_url, local_server, wsgi_app, flow, creds = startDownload()
-        thread_a = getFile2(auth_url, local_server, wsgi_app, flow, creds)
-        thread_a.start()
-        return flask.Response(json.dumps({"authURL": auth_url}), status=200)
+    body = flask.request.get_json()
+    if not body:
+        return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
+    creds = None
+    auth_url, local_server, wsgi_app, flow, creds = start(body['userId'])
+    thread_a = getFile(auth_url, local_server, wsgi_app, flow, creds, body['userId'], body['fileId'])
+    thread_a.start()
+    return flask.Response(json.dumps({"authURL": auth_url}), status=200)
         
 
-# def getFile2(auth_url, local_server, wsgi_app, flow, creds):
-#     if(auth_url != None):
-#             creds = afterUrlAuth(local_server, flow, wsgi_app)
-#     listOfFiles = callApi(creds)
-#     print(listOfFiles, file=sys.stderr)
 
 # Workbench Dataset Creation help-routes
 

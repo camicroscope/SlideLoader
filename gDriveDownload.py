@@ -4,22 +4,18 @@ import wsgiref.simple_server
 import wsgiref.util
 from googleapiclient.http import MediaIoBaseDownload
 from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import (
-    InstalledAppFlow,
-    _WSGIRequestHandler,
-    _RedirectWSGIApp,
-)
+from google_auth_oauthlib.flow import InstalledAppFlow, _WSGIRequestHandler, _RedirectWSGIApp
 from google.auth.transport.requests import Request
 import sys
 import os
 import io
 import shutil
-from werkzeug.utils import secure_filename
 
 
-# If modifying these scopes, delete the file <userID>.pickle files.
+# If modifying these scopes, delete the file "googleDrive<userID>.pickle"
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 
+# Starting a local server on :4001 to listen for authentication response from user
 def run_local_server(
     self=InstalledAppFlow,
     host="0.0.0.0",
@@ -29,10 +25,9 @@ def run_local_server(
     userId=None,
 ):
     wsgi_app = _RedirectWSGIApp(success_message)
-    local_server = wsgiref.simple_server.make_server(
-        host, port, wsgi_app, handler_class=_WSGIRequestHandler
-    )
+    local_server = wsgiref.simple_server.make_server(host, port, wsgi_app, handler_class=_WSGIRequestHandler)
 
+    # Making a unique redirect URL for every user 
     self.redirect_uri = "http://localhost:4010/googleAuth/" + userId
     auth_url, _ = self.authorization_url()
 
@@ -41,6 +36,7 @@ def run_local_server(
     return auth_url, local_server, wsgi_app, None
 
 
+# Will be called after return of Auth URL
 def afterUrlAuth(local_server, flow, wsgi_app, userId):
     local_server.handle_request()
 
@@ -55,12 +51,11 @@ def afterUrlAuth(local_server, flow, wsgi_app, userId):
         pickle.dump(flow.credentials, token)
     return flow.credentials
 
-
+# Starting the Auth process and checking for pickle file (Token) [Creating a new token if not exists]
 def start(userId):
     creds = None
-    # The file token.pickle stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
+    # The file "googleDrive<userID>.pickle" stores the user's access and refresh tokens, and is
+    # created automatically when the authorization flow completes for the first time.
     if os.path.exists("/cloud-upload-apis/tokens/googleDrive" + userId + ".pickle"):
         with open(
             "/cloud-upload-apis/tokens/googleDrive" + userId + ".pickle", "rb"
@@ -78,15 +73,18 @@ def start(userId):
             auth_url, local_server, wsgi_app, creds = run_local_server(
                 self=flow, userId=userId
             )
-            return auth_url, local_server, wsgi_app, flow, creds
-            # creds = afterUrlAuth(local_server, flow, wsgi_app)
+            return {
+                "auth_url": auth_url,
+                "local_server": local_server,
+                "wsgi_app": wsgi_app,
+                "flow": flow,
+                "creds": creds,
+            }
 
 
+# Calling the Drive API to download a file
 def callApi(creds, fileId, token):
     downloadDone = False
-    # fileId = "1HXJqXupb5L8YhCN6KV45_FUHm4K3Hp9r"
-    # fileId = "1NyErLXDZgv1s00-5hnyBqCd5t80SHV3g"
-
     service = build("drive", "v3", credentials=creds)
 
     # Call the Drive v3 API
@@ -107,11 +105,7 @@ def callApi(creds, fileId, token):
         with open("/images/uploading/" + token, "wb") as f:
             shutil.copyfileobj(fh, f)
 
-        # print("File Downloaded")
         # Return True if file Downloaded successfully
         return {"status": True, "fileName": fileName, "token": token}
     except:
-        return False 
-        # print("Something went wrong.")
-
-
+        return False

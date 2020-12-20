@@ -61,7 +61,14 @@ def start(userId):
             "/cloud-upload-apis/tokens/googleDrive" + userId + ".pickle", "rb"
         ) as token:
             creds = pickle.load(token)
-        return None, None, None, None, creds
+        return {
+            "auth_url": None,
+            "local_server": None,
+            "wsgi_app": None,
+            "flow": None,
+            "creds": creds,
+        }
+
     # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:

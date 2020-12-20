@@ -14,14 +14,11 @@ import sys
 import os
 import io
 import shutil
-import random
-import string
 from werkzeug.utils import secure_filename
 
 
 # If modifying these scopes, delete the file <userID>.pickle files.
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
-
 
 def run_local_server(
     self=InstalledAppFlow,
@@ -53,7 +50,7 @@ def afterUrlAuth(local_server, flow, wsgi_app, userId):
     flow.fetch_token(authorization_response=authorization_response)
     # Save the credentials for the next run
     with open(
-        "/cloud-upload-apis/tokens/" + userId + ".pickle", "wb"
+        "/cloud-upload-apis/tokens/googleDrive" + userId + ".pickle", "wb"
     ) as token:
         pickle.dump(flow.credentials, token)
     return flow.credentials
@@ -64,9 +61,9 @@ def start(userId):
     # The file token.pickle stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
     # time.
-    if os.path.exists("/cloud-upload-apis/tokens/" + userId + ".pickle"):
+    if os.path.exists("/cloud-upload-apis/tokens/googleDrive" + userId + ".pickle"):
         with open(
-            "/cloud-upload-apis/tokens/" + userId + ".pickle", "rb"
+            "/cloud-upload-apis/tokens/googleDrive" + userId + ".pickle", "rb"
         ) as token:
             creds = pickle.load(token)
         return None, None, None, None, creds
@@ -85,8 +82,8 @@ def start(userId):
             # creds = afterUrlAuth(local_server, flow, wsgi_app)
 
 
-def callApi(creds, fileId):
-
+def callApi(creds, fileId, token):
+    downloadDone = False
     # fileId = "1HXJqXupb5L8YhCN6KV45_FUHm4K3Hp9r"
     # fileId = "1NyErLXDZgv1s00-5hnyBqCd5t80SHV3g"
 
@@ -96,40 +93,25 @@ def callApi(creds, fileId):
     request = service.files().get_media(fileId=fileId)
     fileName = service.files().get(fileId=fileId).execute()["name"]
 
-    token = "".join(
-        random.choice(string.ascii_uppercase + string.digits) for _ in range(10)
-    )
-    token = secure_filename(token)
-    tmppath = os.path.join("/images/uploading/", token)
-    # regenerate if we happen to collide
-    while os.path.isfile(tmppath):
-        token = "".join(
-            random.choice(string.ascii_uppercase + string.digits) for _ in range(10)
-        )
-        token = secure_filename(token)
-        tmppath = os.path.join("/images/uploading/", token)
-
     fh = io.BytesIO()
 
     # Initialise a downloader object to download the file
     downloader = MediaIoBaseDownload(fh, request)
-    done = False
 
     try:
         # Download the data in chunks
-        while not done:
-            status, done = downloader.next_chunk()
+        while not downloadDone:
+            status, downloadDone = downloader.next_chunk()
         fh.seek(0)
         # Write the received data to the file
         with open("/images/uploading/" + token, "wb") as f:
             shutil.copyfileobj(fh, f)
 
-        print("File Downloaded")
+        # print("File Downloaded")
         # Return True if file Downloaded successfully
         return {"status": True, "fileName": fileName, "token": token}
     except:
-        # Return False if something went wrong
-        print("Something went wrong.")
+        return False 
+        # print("Something went wrong.")
 
 
-# startDownload()

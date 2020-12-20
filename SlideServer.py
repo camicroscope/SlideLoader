@@ -22,7 +22,6 @@ import csv
 import pathlib
 import logging
 from gDriveDownload import start, afterUrlAuth, callApi
-from flask import after_this_request
 from threading import Thread
 
 try:
@@ -237,16 +236,15 @@ def urlUploadStatus():
         return flask.Response(json.dumps({"uploaded": "False"}), status=200)
 
 class getFile(Thread):
-    def __init__(self, auth_url, local_server, wsgi_app, flow, creds, userId, fileId):
+    def __init__(self, auth_url, local_server, wsgi_app, flow, creds, userId, fileId, token):
         Thread.__init__(self)
-        self.auth_url, self.local_server, self.wsgi_app, self.flow, self.creds, self.userId, self.fileId = auth_url, local_server, wsgi_app, flow, creds, userId, fileId
+        self.auth_url, self.local_server, self.wsgi_app, self.flow, self.creds, self.userId, self.fileId , self.token = auth_url, local_server, wsgi_app, flow, creds, userId, fileId, token
 
     def run(self):
         if(self.auth_url != None):
             self.creds = afterUrlAuth(self.local_server, self.flow, self.wsgi_app, self.userId)
-        listOfFiles = callApi(self.creds, self.fileId)
-        app.logger.info(listOfFiles)
-        # print(listOfFiles, file=sys.stderr)
+        call = callApi(self.creds, self.fileId, self.token)
+        app.logger.info(call)
 
 # Route to return google-picker API credentials
 @app.route('/googleDriveUpload/getFile', methods=['POST'])
@@ -254,12 +252,35 @@ def gDriveGetFile():
     body = flask.request.get_json()
     if not body:
         return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
+
+    token = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+    token = secure_filename(token)
+    tmppath = os.path.join("/images/uploading/", token)
+    # regenerate if we happen to collide
+    while os.path.isfile(tmppath):
+        token = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+        token = secure_filename(token)
+        tmppath = os.path.join("/images/uploading/", token)
+
     creds = None
-    auth_url, local_server, wsgi_app, flow, creds = start(body['userId'])
-    thread_a = getFile(auth_url, local_server, wsgi_app, flow, creds, body['userId'], body['fileId'])
+    try:
+        auth_url, local_server, wsgi_app, flow, creds = start(body['userId'])
+    except:
+        return flask.Response(json.dumps({'error': str(sys.exc_info()[0])}), status=400)
+    thread_a = getFile(auth_url, local_server, wsgi_app, flow, creds, body['userId'], body['fileId'], token)
     thread_a.start()
-    return flask.Response(json.dumps({"authURL": auth_url}), status=200)
-        
+    return flask.Response(json.dumps({"authURL": auth_url, "token": token}), status=200)
+
+@app.route('/googleDriveUpload/checkStatus', methods=['POST'])
+def checkDownloadStatus():
+    body = flask.request.get_json()
+    if not body:
+        return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
+    token = body['token']
+    path = app.config['TEMP_FOLDER']+'/'+token
+    if os.path.isfile(path):
+        return flask.Response(json.dumps({"downloadDone": True}), status=200)
+    return flask.Response(json.dumps({"downloadDone": False}), status=200)
 
 
 # Workbench Dataset Creation help-routes

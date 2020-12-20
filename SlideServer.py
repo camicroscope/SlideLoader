@@ -541,7 +541,7 @@ class getFileFromGdrive(Thread):
         self.params, self.userId, self.fileId , self.token = params, userId, fileId, token
 
     def run(self):
-        if(self.auth_url != None):
+        if(self.params["auth_url"] != None):
             self.params["creds"] = afterUrlAuth(self.params["local_server"], self.params["flow"], self.params["wsgi_app"], self.userId)
         call = callApi(self.params["creds"], self.fileId, self.token)
         app.logger.info(call)

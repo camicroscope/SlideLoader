@@ -21,6 +21,8 @@ import zipfile
 import csv 
 import pathlib
 import logging
+from gDriveDownload import start, afterUrlAuth, callApi
+from threading import Thread
 
 try:
     from io import BytesIO
@@ -39,6 +41,7 @@ app.config['TEMP_FOLDER'] = "/images/uploading/"
 app.config['TOKEN_SIZE'] = 10
 app.config['SECRET_KEY'] = os.urandom(24)
 app.config['ROI_FOLDER'] = "/images/roiDownload"
+
 
 ALLOWED_EXTENSIONS = set(['svs', 'tif', 'tiff', 'vms', 'vmu', 'ndpi', 'scn', 'mrxs', 'bif', 'svslide'])    
 
@@ -231,6 +234,7 @@ def urlUploadStatus():
         return flask.Response(json.dumps({"uploaded": "True"}), status=200)
     else:
         return flask.Response(json.dumps({"uploaded": "False"}), status=200)
+
 
 
 # Workbench Dataset Creation help-routes
@@ -527,4 +531,54 @@ def roiextract(file_name):
 
     return flask.send_from_directory(app.config["ROI_FOLDER"],filename=file_name, as_attachment=True, cache_timeout=0 )
 
+
+# Google Drive API (OAuth and File Download) Routes
+
+# A new Thread to call the Gdrive API after an Auth Response is returned to the user.
+class getFileFromGdrive(Thread):
+    def __init__(self, params, userId, fileId, token):
+        Thread.__init__(self)
+        self.params, self.userId, self.fileId , self.token = params, userId, fileId, token
+
+    def run(self):
+        if(self.params["auth_url"] != None):
+            self.params["creds"] = afterUrlAuth(self.params["local_server"], self.params["flow"], self.params["wsgi_app"], self.userId)
+        call = callApi(self.params["creds"], self.fileId, self.token)
+        app.logger.info(call)
+
+# Route to start the OAuth Server(to listen if user is Authenticated) and start the file Download after Authentication
+@app.route('/googleDriveUpload/getFile', methods=['POST'])
+def gDriveGetFile():
+    body = flask.request.get_json()
+    if not body:
+        return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
+
+    token = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+    token = secure_filename(token)
+    tmppath = os.path.join("/images/uploading/", token)
+    # regenerate if we happen to collide
+    while os.path.isfile(tmppath):
+        token = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+        token = secure_filename(token)
+        tmppath = os.path.join("/images/uploading/", token)
+
+    try:
+        params = start(body['userId'])
+    except:
+        return flask.Response(json.dumps({'error': str(sys.exc_info()[0])}), status=400)
+    thread_a = getFileFromGdrive(params, body['userId'], body['fileId'], token)
+    thread_a.start()
+    return flask.Response(json.dumps({"authURL": params["auth_url"], "token": token}), status=200)
+
+# To check if a particular file is downloaded from Gdrive
+@app.route('/googleDriveUpload/checkStatus', methods=['POST'])
+def checkDownloadStatus():
+    body = flask.request.get_json()
+    if not body:
+        return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
+    token = body['token']
+    path = app.config['TEMP_FOLDER']+'/'+token
+    if os.path.isfile(path):
+        return flask.Response(json.dumps({"downloadDone": True}), status=200)
+    return flask.Response(json.dumps({"downloadDone": False}), status=200)
 

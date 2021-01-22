@@ -102,29 +102,35 @@ else:
                 x.id = res[0]["PathDBID"]
 
 
-# perform validation (!!)
+# TODO add validation (!!)
 print("[WARNING] -- Validation not Implemented")
 
+def postWithAuth(data, url):
+    x = requests.post(args.d, json=manifest)
+    retry = True
+    while (x.status_code == 401 and retry):
+        token = input("API returned 401, try a (different) token? : ")
+        if (token and token != "no" and token != "n"):
+            x = requests.post(args.d, json=manifest, auth=token)
+        else:
+            retry = False
+    return x
 
 # take appropriate destination action
 if (args.o == "jsonfile"):
     with open(args.d, 'w') as f:
         json.dump(manifest, f)
 elif (args.o == "camic"):
-    x = requests.post(args.d, json=manifest)
-    # if we get a 401, ask the user for a token
-    retry = True
-    while (x.status_code == 401 and retry):
-        token = input("API returned 401, try a (different) token? : ")
-        if (token and token != "no" and token != "n"):
-            if (args.i == "slide"):
-                x = requests.post(args.d, json=manifest, auth=token)
-            else:
-                pass
-                # process each file in manifest
-        else:
-            retry = False
-    x.raise_for_status()
+    if (args.i == "slide"):
+        x = postWithAuth(args.d, manifest)
+        x.raise_for_status()
+    else:
+        with open(x.path) as f:
+            file = json.load(f)
+            for rec in file:
+                rec[slide] = x.id
+            x = postWithAuth(args.d, file)
+            x.raise_for_status()
 elif (args.o == "pathdb"):
     #! TODO
     if (args.i != "slide"):

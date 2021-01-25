@@ -32,7 +32,9 @@ EXPOSE 4001
 
 # non-root user
 RUN chgrp -R 0 /var && \
-    chmod -R g+rwX /var
+    chmod -R g+rwX /var && \
+    chgrp -R 0 /images/uploading && \
+    chmod -R g+rwX /images/uploading
 
 USER 1001
 

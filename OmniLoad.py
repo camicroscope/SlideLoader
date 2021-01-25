@@ -6,29 +6,27 @@ import argparse # to read arguments
 import time # for timestamp
 import os # for os/fs systems
 import json # for json in and out
-import pymongo # for mongo in and out
 import requests # for api and pathdb in and out
 
 parser = argparse.ArgumentParser(description='Load slides or results to caMicroscope.')
 # read in collection
 parser.add_argument('-i', type=str, default="slide", choices=['slide', 'heatmap', 'mark', 'user'],
-                    help='Input type (collection)')
+                    help='Input type')
 # read in filepath
 parser.add_argument('-f', type=str, default="manifest.csv",
                     help='Input file')
 # read in dest type
-parser.add_argument('-o', type=str, default="mongo", choices=['mongo', 'jsonfile', 'api', 'pathdb'],
+parser.add_argument('-o', type=str, default="camic", choices=['jsonfile', 'camic', 'pathdb'],
                     help='Output destination type')
+# read in pathdb collection
+parser.add_argument('-pc', type=str, help='Pathdb Collection Name')
 # read in dest uri or equivalent
-parser.add_argument('-d', type=str, default="mongodb://ca-mongo:27017/",
+parser.add_argument('-d', type=str, default="http://localhost:4010/data/Slide/post",
                     help='Output destination')
-# read in mongo database
-parser.add_argument('-db', type=str, default="camic",
-                    help='For mongo, the db to use')
 # read in lookup type
-parser.add_argument('-lt', type=str, help='Slide ID lookup type', default="mongo", choices=['mongo', 'jsonfile', 'api', 'pathdb'])
+parser.add_argument('-lt', type=str, help='Slide ID lookup type', default="camic", choices=['camic', 'pathdb'])
 # read in lookup uri or equivalent
-parser.add_argument('-ld', type=str, default="mongodb://ca-mongo:27017/",
+parser.add_argument('-ld', type=str, default="http://localhost:4010/data/Slide/find",
                     help='Slide ID lookup source')
 
 args = parser.parse_args()
@@ -41,14 +39,17 @@ def openslidedata(manifest):
         slide = openslide.OpenSlide(img['location'])
         slideData = slide.properties
         img['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_X, None)
-        img['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_Y, None)
-        img['mpp'] = img['mpp-x'] or img['mpp-x'] or None
-        img['height'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_HEIGHT, None)
-        img['width'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_WIDTH, None)
+        img['mpp-y'] = slideData.get(openslide.PROPERTY_NAME_MPP_Y, None)
+        img['height'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_HEIGHT, None) or slideData.get(
+            "openslide.level[0].height", None)
+        img['width'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_WIDTH, None) or slideData.get(
+            "openslide.level[0].width", None)
         img['vendor'] = slideData.get(openslide.PROPERTY_NAME_VENDOR, None)
         img['level_count'] = int(slideData.get('level_count', 1))
-        img['objective'] = float(slideData.get("aperio.AppMag", None))
-        img['timestamp'] = time.time()
+        img['objective'] = float(slideData.get(openslide.PROPERTY_NAME_OBJECTIVE_POWER, 0) or
+                                      slideData.get("aperio.AppMag", -1.0))
+        img['md5sum'] = file_md5(filepath)
+        img['comment'] = slideData.get(openslide.PROPERTY_NAME_COMMENT, None)
         # required values which are often unused
         img['study'] = img.get('study', "")
         img['specimen'] = img.get('specimen', "")
@@ -72,39 +73,40 @@ with open(args.f, 'r') as f:
 if (args.i == "slide"):
     manifest = openslidedata(manifest)
 else:
-    raise NotImplementedError("Slide id lookup not implemented")
-    if (args.lt == "api"):
+
+    if (args.lt == "camic"):
         for x in manifest:
-            # TODO get slide ref from manifest
-            r = requests.get(args.ld)
-            r.json()
-            # put slide id in manifest
-    if (args.lt == "mongo"):
-        pass
+            # TODO more flexible with manifest fields
+            lookup_url = args.ld + "?name=" + x.slide
+            r = requests.get(lookup_url)
+            res = r.json()
+            if (len(res)) == 0:
+                print("[WARN] - no match for slide '" + x.slide + "', skipping")
+                del x
+            x.id = res[0]["_id"]["$oid"]
     if (args.lt == "pathdb"):
-        pass
-    if (args.lt == "jsonfile"):
-        with open(args.ld, 'r') as f:
-            slide_map = json.load(manifest, f)
-            # TODO use
+        raise NotImplementedError("pathdb lookup is broken now")
+        for x in manifest:
+            # TODO there's an error with the url construction when testing, something's up
+            lookup_url = args.ld + args.pc + "/"
+            lookup_url += x.get("studyid", "") or x.get("study")
+            lookup_url += x.get("clinicaltrialsubjectid", "") or x.get("subject")
+            lookup_url += x.get("imageid", "") or x.get("image", "") or x.get("slide", "")
+            lookup_url += "?_format=json"
+            r = requests.get(lookup_url)
+            res = r.json()
+            if (len(res)) == 0:
+                print("[WARN] - no match for slide '" + str(x) + "', skipping")
+                del x
+            else:
+                x.id = res[0]["PathDBID"]
 
 
-# perform validation (!!)
+# TODO add validation (!!)
 print("[WARNING] -- Validation not Implemented")
 
-
-# take appropriate destination action
-if (args.o == "jsonfile"):
-    with open(args.d, 'w') as f:
-        json.dump(manifest, f)
-elif (args.o == "mongo"):
-    client = pymongo.MongoClient(args.d)
-    db = client[args.db]
-    col = db[args.i]
-    col.insert_many(manifest)
-elif (args.o == "api"):
+def postWithAuth(data, url):
     x = requests.post(args.d, json=manifest)
-    # if we get a 401, ask the user for a token
     retry = True
     while (x.status_code == 401 and retry):
         token = input("API returned 401, try a (different) token? : ")
@@ -112,7 +114,23 @@ elif (args.o == "api"):
             x = requests.post(args.d, json=manifest, auth=token)
         else:
             retry = False
-    x.raise_for_status()
+    return x
+
+# take appropriate destination action
+if (args.o == "jsonfile"):
+    with open(args.d, 'w') as f:
+        json.dump(manifest, f)
+elif (args.o == "camic"):
+    if (args.i == "slide"):
+        x = postWithAuth(args.d, manifest)
+        x.raise_for_status()
+    else:
+        with open(x.path) as f:
+            file = json.load(f)
+            for rec in file:
+                rec[slide] = x.id
+            x = postWithAuth(args.d, file)
+            x.raise_for_status()
 elif (args.o == "pathdb"):
     #! TODO
     if (args.i != "slide"):

@@ -10,7 +10,7 @@ import hashlib
 
 parser = argparse.ArgumentParser(description='Load slides or results to caMicroscope.')
 # read in collection
-parser.add_argument('-i', type=str, default="slide", choices=['slide', 'heatmap', 'mark', 'user'],
+parser.add_argument('-i', type=str, default="slide", choices=['slide', 'heatmap', 'mark', 'user', 'segmentation'],
                     help='Input type')
 # read in filepath
 parser.add_argument('-f', type=str, default="manifest.csv",
@@ -89,6 +89,43 @@ def postWithAuth(url, data):
             retry = False
     return x
 
+def convertSegmentations(poly, name):
+    # interpret the objectively bad polygon representation
+    poly = poly.replace("[","")
+    poly = poly.replace("]","")
+    poly = poly.split(":")
+    new_poly = []
+    x_max = -1.
+    x_min = 9e99
+    y_max = -1.
+    y_min = 9e99
+    for i in range(0,len(poly),2):
+        x_max = max(x_max, float(poly[i]))
+        x_min = min(x_min, float(poly[i]))
+        y_max = max(y_max, float(poly[i+1]))
+        y_min = min(y_min, float(poly[i+1]))
+        new_poly.append([float(poly[i]), float(poly[i+1])])
+        # construct result
+    provenance = {}
+    provenance['image'] = {}
+    # may need better execution id
+    provenance['analysis'] = {"source":"segmentation", "coordinate":"image", "execution_id":name, "name":name}
+    properties = {}
+    properties['annotations'] = {"name": name}
+    geometries = {"type":"FeatureCollection"}
+    feature = {"type":"Feature"}
+    geometry = {"type":"Polygon"}
+    geometry['coordinates'] = [new_poly]
+    bound = {"type":"Polygon"}
+    # get bound
+    bound['coordinates'] = [[[x_min, y_min], [x_min, y_max], [x_max, y_max], [x_max, y_min], [x_min, y_min]]]
+    geometries['features'] = [feature]
+    geometries['bound'] = bound
+    res = {}
+    res['geometries'] = geometries
+    res['provenance'] = provenance
+    res['properties'] = properties
+    return res
 
 ## START script
 
@@ -153,15 +190,22 @@ elif (args.o == "camic"):
     else:
         for x in manifest:
             with open(x['path']) as f:
-                fil = json.load(f)
-                for rec in fil:
-                    # TODO safer version of this?
-                    rec['provenance']['image']['slide'] = x['id']
+                if (args.i == "segmentation"):
+                    reader = csv.DictReader(f)
+                    fil = [row for row in reader]
+                    for rec in fil:
+                        rec = convertSegmentations(rec['polygon'], x['segname'])
+                        rec['provenance']['image']['slide'] = x['id']
+                else:
+                    fil = json.load(f)
+                    for rec in fil:
+                        # TODO safer version of this?
+                        rec['provenance']['image']['slide'] = x['id']
                 r = postWithAuth(args.d, fil)
                 print(r.json())
                 r.raise_for_status()
 elif (args.o == "pathdb"):
-    #! TODO
+    #! TODO - need the url and pattern for adding a slide to pathdb
     if (args.i != "slide"):
         raise AssertionError("Pathdb only holds slide data.")
     raise NotImplementedError("Output type: " + args.o + " not yet implemented")

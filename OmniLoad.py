@@ -55,6 +55,31 @@ def openslidedata(manifest):
         img['specimen'] = img.get('specimen', "")
     return manifest
 
+def getWithAuth(url):
+    x = requests.get(lookup_url)
+    retry = True
+    while (x.status_code == 401 and retry):
+        token = input("API returned 401, try a (different) token? : ")
+        if (token and token != "no" and token != "n"):
+            x = requests.get(lookup_url, auth=token)
+        else:
+            retry = False
+    return x
+
+def postWithAuth(data, url):
+    x = requests.post(args.d, json=manifest)
+    retry = True
+    while (x.status_code == 401 and retry):
+        token = input("API returned 401, try a (different) token? : ")
+        if (token and token != "no" and token != "n"):
+            x = requests.post(args.d, json=manifest, auth=token)
+        else:
+            retry = False
+    return x
+
+
+## START script
+
 manifest = []
 
 # context for file
@@ -78,43 +103,30 @@ else:
         for x in manifest:
             # TODO more flexible with manifest fields
             lookup_url = args.ld + "?name=" + x.slide
-            r = requests.get(lookup_url)
+            x = getWithAuth(lookup_url)
             res = r.json()
             if (len(res)) == 0:
                 print("[WARN] - no match for slide '" + x.slide + "', skipping")
                 del x
             x.id = res[0]["_id"]["$oid"]
     if (args.lt == "pathdb"):
-        raise NotImplementedError("pathdb lookup is broken now")
         for x in manifest:
-            # TODO there's an error with the url construction when testing, something's up
             lookup_url = args.ld + args.pc + "/"
             lookup_url += x.get("studyid", "") or x.get("study")
             lookup_url += x.get("clinicaltrialsubjectid", "") or x.get("subject")
             lookup_url += x.get("imageid", "") or x.get("image", "") or x.get("slide", "")
             lookup_url += "?_format=json"
-            r = requests.get(lookup_url)
+            r = getWithAuth(lookup_url)
             res = r.json()
-            if (len(res)) == 0:
+            try:
+                x.id = res[0]["nid"][0].value
+            except:
                 print("[WARN] - no match for slide '" + str(x) + "', skipping")
                 del x
-            else:
-                x.id = res[0]["PathDBID"]
 
 
 # TODO add validation (!!)
 print("[WARNING] -- Validation not Implemented")
-
-def postWithAuth(data, url):
-    x = requests.post(args.d, json=manifest)
-    retry = True
-    while (x.status_code == 401 and retry):
-        token = input("API returned 401, try a (different) token? : ")
-        if (token and token != "no" and token != "n"):
-            x = requests.post(args.d, json=manifest, auth=token)
-        else:
-            retry = False
-    return x
 
 # take appropriate destination action
 if (args.o == "jsonfile"):

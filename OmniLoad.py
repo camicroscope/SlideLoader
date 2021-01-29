@@ -3,8 +3,6 @@
 import openslide # to get required slide metadata
 import csv # to read csv
 import argparse # to read arguments
-import time # for timestamp
-import os # for os/fs systems
 import json # for json in and out
 import requests # for api and pathdb in and out
 
@@ -67,7 +65,7 @@ def getWithAuth(url):
     return x
 
 def postWithAuth(url, data):
-    x = requests.post(args.d, json=manifest)
+    x = requests.post(args.d, json=data)
     retry = True
     while (x.status_code == 401 and retry):
         token = input("API returned 401, try a (different) token? : ")
@@ -135,17 +133,19 @@ if (args.o == "jsonfile"):
         json.dump(manifest, f)
 elif (args.o == "camic"):
     if (args.i == "slide"):
-        x = postWithAuth(args.d, manifest)
-        print(x.json())
-        x.raise_for_status()
+        r = postWithAuth(args.d, manifest)
+        print(r.json())
+        r.raise_for_status()
     else:
-        with open(x['path']) as f:
-            fil = json.load(f)
-            for rec in fil:
-                rec['slide'] = x['id']
-            x = postWithAuth(args.d, fil)
-            print(x.json())
-            x.raise_for_status()
+        for x in manifest:
+            with open(x['path']) as f:
+                fil = json.load(f)
+                for rec in fil:
+                    # TODO safer version of this?
+                    rec['provenance']['image']['slide'] = x['id']
+                r = postWithAuth(args.d, fil)
+                print(r.json())
+                r.raise_for_status()
 elif (args.o == "pathdb"):
     #! TODO
     if (args.i != "slide"):

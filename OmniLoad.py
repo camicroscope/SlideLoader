@@ -2,6 +2,7 @@
 
 import openslide # to get required slide metadata
 import csv # to read csv
+import os # for os and filepath utils
 import argparse # to read arguments
 import json # for json in and out
 import requests # for api and pathdb in and out

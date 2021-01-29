@@ -207,7 +207,7 @@ elif (args.o == "camic"):
                     segs = [row for row in reader]
                     fil = []
                     for rec in segs:
-                        res = convertSegmentations(rec['Polygon'], x['segname'], x['AreaInPixels'])
+                        res = convertSegmentations(rec['Polygon'], x['segname'], rec['AreaInPixels'])
                         res['provenance']['image']['slide'] = x['id']
                         fil.append(res)
                 else:

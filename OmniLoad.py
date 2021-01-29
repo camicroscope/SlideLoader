@@ -115,7 +115,7 @@ def convertSegmentations(poly, name):
     provenance = {}
     provenance['image'] = {}
     # may need better execution id
-    provenance['analysis'] = {"source":"segmentation", "coordinate":"image", "execution_id":name, "name":name}
+    provenance['analysis'] = {"source":"computer", "coordinate":"image", "execution_id":name, "name":name}
     properties = {}
     properties['annotations'] = {"name": name}
     geometries = {"type":"FeatureCollection"}
@@ -202,7 +202,7 @@ elif (args.o == "camic"):
                     segs = [row for row in reader]
                     fil = []
                     for rec in segs:
-                        res = convertSegmentations(rec['polygon'], x['segname'])
+                        res = convertSegmentations(rec['Polygon'], x['segname'])
                         res['provenance']['image']['slide'] = x['id']
                         fil.append(res)
                 else:

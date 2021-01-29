@@ -5,6 +5,7 @@ import csv # to read csv
 import argparse # to read arguments
 import json # for json in and out
 import requests # for api and pathdb in and out
+import hashlib
 
 parser = argparse.ArgumentParser(description='Load slides or results to caMicroscope.')
 # read in collection
@@ -30,10 +31,21 @@ parser.add_argument('-ld', type=str, default="http://ca-back:4010/data/Slide/fin
 args = parser.parse_args()
 print(args)
 
+def file_md5(fileName):
+    m = hashlib.md5()
+    blocksize = 2 ** 20
+    with open(fileName, "rb") as f:
+        while True:
+            buf = f.read(blocksize)
+            if not buf:
+                break
+            m.update(buf)
+    return m.hexdigest()
+
 # get fields openslide expects
 def openslidedata(manifest):
     for img in manifest:
-        img['location'] = img['location'] or img['filename'] or img['file']
+        img['location'] = img['path'] or img['location'] or img['filename'] or img['file']
         slide = openslide.OpenSlide(img['location'])
         slideData = slide.properties
         img['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_X, None)

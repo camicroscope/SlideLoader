@@ -21,12 +21,12 @@ parser.add_argument('-o', type=str, default="camic", choices=['jsonfile', 'camic
 # read in pathdb collection
 parser.add_argument('-pc', type=str, help='Pathdb Collection Name')
 # read in dest uri or equivalent
-parser.add_argument('-d', type=str, default="http://localhost:4010/data/Slide/post",
+parser.add_argument('-d', type=str, default="http://ca-back:4010/data/Slide/post",
                     help='Output destination')
 # read in lookup type
 parser.add_argument('-lt', type=str, help='Slide ID lookup type', default="camic", choices=['camic', 'pathdb'])
 # read in lookup uri or equivalent
-parser.add_argument('-ld', type=str, default="http://localhost:4010/data/Slide/find",
+parser.add_argument('-ld', type=str, default="http://ca-back:4010/data/Slide/find",
                     help='Slide ID lookup source')
 
 args = parser.parse_args()
@@ -66,13 +66,13 @@ def getWithAuth(url):
             retry = False
     return x
 
-def postWithAuth(data, url):
+def postWithAuth(url, data):
     x = requests.post(args.d, json=manifest)
     retry = True
     while (x.status_code == 401 and retry):
         token = input("API returned 401, try a (different) token? : ")
         if (token and token != "no" and token != "n"):
-            x = requests.post(args.d, json=manifest, auth=token)
+            x = requests.post(args.d, json=data, auth=token)
         else:
             retry = False
     return x
@@ -102,16 +102,17 @@ else:
     if (args.lt == "camic"):
         for x in manifest:
             # TODO more flexible with manifest fields
-            lookup_url = args.ld + "?name=" + x.slide
-            x = getWithAuth(lookup_url)
+            lookup_url = args.ld + "?name=" + x['slide']
+            r = getWithAuth(lookup_url)
             res = r.json()
-            if (len(res)) == 0:
-                print("[WARN] - no match for slide '" + x.slide + "', skipping")
+            try:
+                x['id'] = res[0]["_id"]["$oid"]
+            except:
+                print("[WARN] - no match for slide '" + str(x) + "', skipping")
                 del x
-            x.id = res[0]["_id"]["$oid"]
     if (args.lt == "pathdb"):
         for x in manifest:
-            lookup_url = args.ld + args.pc + "/"
+            lookup_url = args.ld + "/" + args.pc + "/"
             lookup_url += x.get("studyid", "") or x.get("study")
             lookup_url += x.get("clinicaltrialsubjectid", "") or x.get("subject")
             lookup_url += x.get("imageid", "") or x.get("image", "") or x.get("slide", "")
@@ -119,7 +120,7 @@ else:
             r = getWithAuth(lookup_url)
             res = r.json()
             try:
-                x.id = res[0]["nid"][0].value
+                x['id'] = res[0]["nid"][0].value
             except:
                 print("[WARN] - no match for slide '" + str(x) + "', skipping")
                 del x
@@ -135,13 +136,15 @@ if (args.o == "jsonfile"):
 elif (args.o == "camic"):
     if (args.i == "slide"):
         x = postWithAuth(args.d, manifest)
+        print(x.json())
         x.raise_for_status()
     else:
-        with open(x.path) as f:
-            file = json.load(f)
-            for rec in file:
-                rec[slide] = x.id
-            x = postWithAuth(args.d, file)
+        with open(x['path']) as f:
+            fil = json.load(f)
+            for rec in fil:
+                rec['slide'] = x['id']
+            x = postWithAuth(args.d, fil)
+            print(x.json())
             x.raise_for_status()
 elif (args.o == "pathdb"):
     #! TODO

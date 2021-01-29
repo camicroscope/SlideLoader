@@ -46,7 +46,7 @@ def file_md5(fileName):
 # get fields openslide expects
 def openslidedata(manifest):
     for img in manifest:
-        img['location'] = img['path'] or img['location'] or img['filename'] or img['file']
+        img['location'] = img.get("path", "") or img.get("location", "") or img.get("filename", "") or img.get("file", "")
         slide = openslide.OpenSlide(img['location'])
         slideData = slide.properties
         img['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_X, None)

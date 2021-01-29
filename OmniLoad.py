@@ -93,7 +93,7 @@ def postWithAuth(url, data):
             retry = False
     return x
 
-def convertSegmentations(poly, name):
+def convertSegmentations(poly, name, area):
     # interpret the objectively bad polygon representation
     poly = poly.replace("[","")
     poly = poly.replace("]","")
@@ -115,23 +115,28 @@ def convertSegmentations(poly, name):
     provenance = {}
     provenance['image'] = {}
     # may need better execution id
-    provenance['analysis'] = {"source":"computer", "coordinate":"image", "execution_id":name, "name":name}
+    provenance['analysis'] = {"source":"computer", "coordinate":"image", "execution_id":name, "name":name, "computation":"segmentation"}
     properties = {}
-    properties['annotations'] = {"name": name}
+    properties['annotations'] = {"name": name, 'AreaInPixels':area, "PhysicalSize":area}
     geometries = {"type":"FeatureCollection"}
     feature = {"type":"Feature"}
     geometry = {"type":"Polygon"}
     geometry['coordinates'] = [new_poly]
     bound = {"type":"Polygon"}
     feature['geometry'] = geometry
+    feature['bound'] = bound
     # get bound
     bound['coordinates'] = [[[x_min, y_min], [x_min, y_max], [x_max, y_max], [x_max, y_min], [x_min, y_min]]]
     geometries['features'] = [feature]
-    geometries['bound'] = bound
     res = {}
     res['geometries'] = geometries
     res['provenance'] = provenance
     res['properties'] = properties
+    res['footprint'] = area
+    res['x'] = x_min
+    res['y'] = y_min
+    res['object_type'] = "unknown"
+    res['parent_id'] = "self"
     return res
 
 ## START script
@@ -202,7 +207,7 @@ elif (args.o == "camic"):
                     segs = [row for row in reader]
                     fil = []
                     for rec in segs:
-                        res = convertSegmentations(rec['Polygon'], x['segname'])
+                        res = convertSegmentations(rec['Polygon'], x['segname'], x['AreaInPixels'])
                         res['provenance']['image']['slide'] = x['id']
                         fil.append(res)
                 else:

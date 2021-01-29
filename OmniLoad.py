@@ -51,6 +51,7 @@ def openslidedata(manifest):
         slideData = slide.properties
         img['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_X, None)
         img['mpp-y'] = slideData.get(openslide.PROPERTY_NAME_MPP_Y, None)
+        img['mpp'] = img['mpp-x'] or img['mpp-y']
         img['height'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_HEIGHT, None) or slideData.get(
             "openslide.level[0].height", None)
         img['width'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_WIDTH, None) or slideData.get(
@@ -59,7 +60,7 @@ def openslidedata(manifest):
         img['level_count'] = int(slideData.get('level_count', 1))
         img['objective'] = float(slideData.get(openslide.PROPERTY_NAME_OBJECTIVE_POWER, 0) or
                                       slideData.get("aperio.AppMag", -1.0))
-        img['md5sum'] = file_md5(filepath)
+        img['md5sum'] = file_md5(img['location'])
         img['comment'] = slideData.get(openslide.PROPERTY_NAME_COMMENT, None)
         # required values which are often unused
         img['study'] = img.get('study', "")

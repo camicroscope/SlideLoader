@@ -2,11 +2,15 @@
 
 import openslide # to get required slide metadata
 import csv # to read csv
+import sys # for csv limit
 import os # for os and filepath utils
 import argparse # to read arguments
 import json # for json in and out
 import requests # for api and pathdb in and out
 import hashlib
+
+# for large csv fields, especially segmentations
+csv.field_size_limit(sys.maxsize)
 
 parser = argparse.ArgumentParser(description='Load slides or results to caMicroscope.')
 # read in collection
@@ -106,6 +110,8 @@ def convertSegmentations(poly, name):
         y_min = min(y_min, float(poly[i+1]))
         new_poly.append([float(poly[i]), float(poly[i+1])])
         # construct result
+    # complete loop
+    new_poly.append(new_poly[0])
     provenance = {}
     provenance['image'] = {}
     # may need better execution id
@@ -117,6 +123,7 @@ def convertSegmentations(poly, name):
     geometry = {"type":"Polygon"}
     geometry['coordinates'] = [new_poly]
     bound = {"type":"Polygon"}
+    feature['geometry'] = geometry
     # get bound
     bound['coordinates'] = [[[x_min, y_min], [x_min, y_max], [x_max, y_max], [x_max, y_min], [x_min, y_min]]]
     geometries['features'] = [feature]
@@ -192,10 +199,12 @@ elif (args.o == "camic"):
             with open(x['path']) as f:
                 if (args.i == "segmentation"):
                     reader = csv.DictReader(f)
-                    fil = [row for row in reader]
-                    for rec in fil:
-                        rec = convertSegmentations(rec['polygon'], x['segname'])
-                        rec['provenance']['image']['slide'] = x['id']
+                    segs = [row for row in reader]
+                    fil = []
+                    for rec in segs:
+                        res = convertSegmentations(rec['polygon'], x['segname'])
+                        res['provenance']['image']['slide'] = x['id']
+                        fil.append(res)
                 else:
                     fil = json.load(f)
                     for rec in fil:

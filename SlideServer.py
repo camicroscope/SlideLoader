@@ -177,18 +177,30 @@ def testRoute():
 
 @app.route("/data/one/<filepath>", methods=['GET'])
 def singleSlide(filepath):
-    return json.dumps(dev_utils.getMetadata(filepath, app.config['UPLOAD_FOLDER']))
+    res = dev_utils.getMetadata(filepath, app.config['UPLOAD_FOLDER'])
+    if (res.error):
+        return flask.Response(json.dumps(res), status=500)
+    else:
+        return flask.Response(json.dumps(res), status=200)
 
 
 @app.route("/data/thumbnail/<filepath>", methods=['GET'])
 def singleThumb(filepath):
+    res = getThumbnail(filepath, size)
     size = flask.request.args.get('size', default=50, type=int)
-    return json.dumps(getThumbnail(filepath, size))
+    if (res.error):
+        return flask.Response(json.dumps(res), status=500)
+    else:
+        return flask.Response(json.dumps(res), status=200)
 
 
 @app.route("/data/many/<filepathlist>", methods=['GET'])
 def multiSlide(filepathlist):
-    return json.dumps(dev_utils.getMetadataList(json.loads(filepathlist), app.config['UPLOAD_FOLDER']))
+    res = dev_utils.getMetadataList(json.loads(filepathlist), app.config['UPLOAD_FOLDER'])
+    if (res.error):
+        return flask.Response(json.dumps(res), status=500)
+    else:
+        return flask.Response(json.dumps(res), status=200)
 
 
 @app.route("/getSlide/<image_name>")

@@ -70,8 +70,9 @@ def makePyramid(filename, dest):
     try:
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         destpath = os.path.join(app.config['UPLOAD_FOLDER'], dest)
-        pyvips.Image.new_from_file(filepath, access='sequential').tiffsave(destpath, tile=True, compression="lzw", tile_width=256, tile_height=256, pyramid=True, bigtiff=True, xres=0.254, yres=0.254)
-        return flask.Response(json.dumps({"status": "OK"}), status=200)
+        savedImg = pyvips.Image.new_from_file(filepath, access='sequential').tiffsave(destpath, tile=True, compression="lzw", tile_width=256, tile_height=256, pyramid=True, bigtiff=True, xres=0.254, yres=0.254)
+        print(savedImg)
+        return flask.Response(json.dumps({"status": "OK", "srcFile":filename, "destFile":dest, "details":savedImg}), status=200)
     except BaseException as e:
         return flask.Response(json.dumps({"type": "pyvips", "error": str(e)}), status=500)
 

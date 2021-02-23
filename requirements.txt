@@ -4,6 +4,7 @@ Werkzeug
 flask-cors
 requests
 numpy
+pandas
 Pillow
 google-api-python-client
 google-auth-httplib2

@@ -43,7 +43,7 @@ app.config['SECRET_KEY'] = os.urandom(24)
 app.config['ROI_FOLDER'] = "/images/roiDownload"
 
 
-ALLOWED_EXTENSIONS = set(['svs', 'tif', 'tiff', 'vms', 'vmu', 'ndpi', 'scn', 'mrxs', 'bif', 'svslide'])    
+ALLOWED_EXTENSIONS = set(['svs', 'tif', 'tiff', 'vms', 'vmu', 'ndpi', 'scn', 'mrxs', 'bif', 'svslide', 'png', 'jpg'])    
 
 
 def allowed_file(filename):
@@ -70,8 +70,11 @@ def makePyramid(filename, dest):
     try:
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         destpath = os.path.join(app.config['UPLOAD_FOLDER'], dest)
-        pyvips.Image.new_from_file(filepath, access='sequential').tiffsave(destpath, tile=True, compression="lzw", tile_width=256, tile_height=256, pyramid=True, bigtiff=True, xres=0.254, yres=0.254)
-        return flask.Response(json.dumps({"status": "OK"}), status=200)
+        savedImg = pyvips.Image.new_from_file(filepath, access='sequential').tiffsave(destpath, tile=True, compression="lzw", tile_width=256, tile_height=256, pyramid=True, bigtiff=True, xres=0.254, yres=0.254)
+        while not os.path.exists(filepath):
+            os.sync()
+            sleep(750)
+        return flask.Response(json.dumps({"status": "OK", "srcFile":filename, "destFile":dest, "details":savedImg}), status=200)
     except BaseException as e:
         return flask.Response(json.dumps({"type": "pyvips", "error": str(e)}), status=500)
 
@@ -177,18 +180,30 @@ def testRoute():
 
 @app.route("/data/one/<filepath>", methods=['GET'])
 def singleSlide(filepath):
-    return json.dumps(dev_utils.getMetadata(filepath, app.config['UPLOAD_FOLDER']))
+    res = dev_utils.getMetadata(filepath, app.config['UPLOAD_FOLDER'])
+    if (hasattr(res, 'error')):
+        return flask.Response(json.dumps(res), status=500)
+    else:
+        return flask.Response(json.dumps(res), status=200)
 
 
 @app.route("/data/thumbnail/<filepath>", methods=['GET'])
 def singleThumb(filepath):
     size = flask.request.args.get('size', default=50, type=int)
-    return json.dumps(getThumbnail(filepath, size))
+    res = getThumbnail(filepath, size)
+    if (hasattr(res, 'error')):
+        return flask.Response(json.dumps(res), status=500)
+    else:
+        return flask.Response(json.dumps(res), status=200)
 
 
 @app.route("/data/many/<filepathlist>", methods=['GET'])
 def multiSlide(filepathlist):
-    return json.dumps(dev_utils.getMetadataList(json.loads(filepathlist), app.config['UPLOAD_FOLDER']))
+    res = dev_utils.getMetadataList(json.loads(filepathlist), app.config['UPLOAD_FOLDER'])
+    if (hasattr(res, 'error')):
+        return flask.Response(json.dumps(res), status=500)
+    else:
+        return flask.Response(json.dumps(res), status=200)
 
 
 @app.route("/getSlide/<image_name>")

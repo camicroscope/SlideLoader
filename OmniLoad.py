@@ -175,13 +175,13 @@ else:
         for x in manifest:
             lookup_url = args.ld + "/" + args.pc + "/"
             lookup_url += x.get("studyid", "") or x.get("study")
-            lookup_url += x.get("clinicaltrialsubjectid", "") or x.get("subject")
-            lookup_url += x.get("imageid", "") or x.get("image", "") or x.get("slide", "")
+            lookup_url += "/" + x.get("clinicaltrialsubjectid", "") or x.get("subject")
+            lookup_url += "/" + x.get("imageid", "") or x.get("image", "") or x.get("slide", "")
             lookup_url += "?_format=json"
             r = getWithAuth(lookup_url)
             res = r.json()
             try:
-                x['id'] = res[0]["nid"][0].value
+                x['id'] = res[0]["nid"][0]['value']
             except:
                 print("[WARN] - no match for slide '" + str(x) + "', skipping")
                 del x

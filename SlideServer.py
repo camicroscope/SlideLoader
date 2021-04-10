@@ -35,6 +35,10 @@ flask_cors.CORS(app)
 # dataset storage location for the workbench tasks 
 app.config['DATASET_FOLDER'] = "/images/dataset/"
 
+#creating a uploading folder if it doesn't exist
+if not os.path.exists('/images/uploading/'):
+    os.mkdir('/images/uploading')
+
 # where to put and get slides
 app.config['UPLOAD_FOLDER'] = "/images/"
 app.config['TEMP_FOLDER'] = "/images/uploading/"

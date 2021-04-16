@@ -553,7 +553,7 @@ def roiextract(file_name):
     return flask.send_from_directory(app.config["ROI_FOLDER"],filename=file_name, as_attachment=True, cache_timeout=0 )
 
 def serve_pil_image(pil_img):
-    img_io = StringIO()
+    img_io = BytesIO()
     pil_img.save(img_io, 'PNG')
     img_io.seek(0)
     return img_io

@@ -566,8 +566,12 @@ def showDicom(filename):
     try:
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         ds = dcmread(filepath)
-        img_min = numpy.min(ds.pixel_array)-1
-        arr = numpy.subtract(ds.pixel_array, img_min)
+        pixel_array = ds.pixel_array
+        if len(numpy.shape(pixel_array)) == 3:
+            slice = request.args.get('slice', 0)
+            pixel_array = pixel_array[slice]
+        img_min = numpy.min(pixel_array)-1
+        arr = numpy.subtract(pixel_array, img_min)
         img_scale_factor = 14 - math.floor(math.log2(numpy.max(arr)))
         arr = numpy.multiply(arr, 2**img_scale_factor)
         img = Image.fromarray(arr)

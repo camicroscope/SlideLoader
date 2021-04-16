@@ -588,9 +588,9 @@ def infoDicom(filename):
         pixel_array = ds.pixel_array
         frames = 1
         if len(numpy.shape(pixel_array)) == 3:
-            (frames, x, y) = np.shape(pixel_array)
+            (frames, x, y) = numpy.shape(pixel_array)
         elif len(numpy.shape(pixel_array)) == 2:
-            (x, y) = np.shape(pixel_array)
+            (x, y) = numpy.shape(pixel_array)
         return flask.Response(json.dumps({"frames":frames,"x":x,"y":y}), status=200)
     except BaseException as e:
         return flask.Response(json.dumps({'error': str(e)}), status=400)

@@ -568,7 +568,7 @@ def showDicom(filename):
         ds = dcmread(filepath)
         pixel_array = ds.pixel_array
         if len(numpy.shape(pixel_array)) == 3:
-            slice = flask.request.args.get('slice', 0)
+            slice = int(flask.request.args.get('slice', 0))
             pixel_array = pixel_array[slice]
         img_min = numpy.min(pixel_array)-1
         arr = numpy.subtract(pixel_array, img_min)

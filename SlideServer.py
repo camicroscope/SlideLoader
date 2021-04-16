@@ -18,11 +18,13 @@ from werkzeug.utils import secure_filename
 import dev_utils
 import requests
 import zipfile
-import csv 
+import csv
 import pathlib
 import logging
+from pydicom import dcmread
 from gDriveDownload import start, afterUrlAuth, callApi
 from threading import Thread
+
 
 try:
     from io import BytesIO
@@ -32,7 +34,7 @@ except ImportError:
 app = flask.Flask(__name__)
 flask_cors.CORS(app)
 
-# dataset storage location for the workbench tasks 
+# dataset storage location for the workbench tasks
 app.config['DATASET_FOLDER'] = "/images/dataset/"
 
 #creating a uploading folder if it doesn't exist
@@ -47,7 +49,7 @@ app.config['SECRET_KEY'] = os.urandom(24)
 app.config['ROI_FOLDER'] = "/images/roiDownload"
 
 
-ALLOWED_EXTENSIONS = set(['svs', 'tif', 'tiff', 'vms', 'vmu', 'ndpi', 'scn', 'mrxs', 'bif', 'svslide', 'png', 'jpg'])    
+ALLOWED_EXTENSIONS = set(['svs', 'tif', 'tiff', 'vms', 'vmu', 'ndpi', 'scn', 'mrxs', 'bif', 'svslide', 'png', 'jpg'])
 
 
 def allowed_file(filename):
@@ -160,14 +162,14 @@ def slide_delete():
 
     if not body:
         return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
-        
+
     filename = body['filename']
     if filename and allowed_file(filename):
         filename = secure_filename(filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         if os.path.isfile(filepath):
             os.remove(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            return flask.Response(json.dumps({"deleted": filename, "success": True})) 
+            return flask.Response(json.dumps({"deleted": filename, "success": True}))
         else:
             return flask.Response(json.dumps({"error": "File with name '" + filename + "' does not exist"}), status=400)
 
@@ -239,7 +241,7 @@ def continue_urlfile(token):
     else:
         return flask.Response(json.dumps({"error": "Token Not Recognised"}), status=400)
 
-# Route to check if the URL file has completely uploaded to the server 
+# Route to check if the URL file has completely uploaded to the server
 # Query Params: 'url', 'token'
 @app.route('/urlupload/check', methods=['GET'])
 def urlUploadStatus():
@@ -461,7 +463,7 @@ def deleteDataset(userFolder):
     return flask.Response(json.dumps({"deleted": "true"}), status=200)
 
 
-# Helper function for converting slides into jpg 
+# Helper function for converting slides into jpg
 def _get_concat_h(img_lst):
     width, height, h = sum([img.width for img in img_lst]), img_lst[0].height, 0
     dst = Image.new('RGB', (width, height))
@@ -470,7 +472,7 @@ def _get_concat_h(img_lst):
         h += img.width
     return dst
 
-# Helper function for converting slides into jpg 
+# Helper function for converting slides into jpg
 def _get_concat_v(img_lst):
     width, height, v = img_lst[0].width, sum([img.height for img in img_lst]), 0
     dst = Image.new('RGB', (width, height))
@@ -483,7 +485,7 @@ def _get_concat_v(img_lst):
 def convert(fname, input_dir , output_dir):
     UNIT_X, UNIT_Y = 5000, 5000
     try:
-        
+
         save_name = fname.split(".")[0] + ".jpg"
         os_obj = openslide.OpenSlide(input_dir+"/"+fname)
         w, h = os_obj.dimensions
@@ -494,7 +496,7 @@ def convert(fname, input_dir , output_dir):
         v_lst = []
         for i in range(h_rep):
             if i == h_rep-1:
-                h_size = h_end 
+                h_size = h_end
             h_lst = []
             for j in range(w_rep):
                 if j == w_rep-1:
@@ -513,9 +515,9 @@ def convert(fname, input_dir , output_dir):
     except:
         print("Can't open image file : %s"%fname)
         traceback.print_exc()
-    return    
+    return
 
-# Route to extract the patches using the predictions recieved 
+# Route to extract the patches using the predictions recieved
 @app.route('/roiExtract', methods = ['POST'])
 def roiExtract():
     data = flask.request.get_json()
@@ -535,7 +537,7 @@ def roiExtract():
         img1.save("/images/roiDownload/"+str(data['predictions'][i]['cls'])+'_'+str(i)+'_'+ str(data['predictions'][i]['acc']*100)+".jpg")
         download_patches.write("/images/roiDownload/"+str(data['predictions'][i]['cls'])+'_'+str(i)+'_'+ str(data['predictions'][i]['acc']*100)+".jpg" , "/patches/"+
         str(data['predictions'][i]['cls'])+"/"+str(data['predictions'][i]['cls'])+'_'+str(i)+'_'+ str(data['predictions'][i]['acc']*100)+".jpg")
-        
+
     download_patches.close()
 
     # img = openslide.OpenSlide.read_region((0,0),0,(100,100))
@@ -543,14 +545,29 @@ def roiExtract():
     # res= { "data" :"" }
     # res['data']= pred
     return flask.Response(json.dumps({"extracted": "true"}), status=200)
-    
+
 # Route to send back the extracted
 @app.route('/roiextract/<file_name>')
 def roiextract(file_name):
 
     return flask.send_from_directory(app.config["ROI_FOLDER"],filename=file_name, as_attachment=True, cache_timeout=0 )
 
+def serve_pil_image(pil_img):
+    img_io = StringIO()
+    pil_img.save(img_io, 'PNG')
+    img_io.seek(0)
+    return img_io
 
+# dicom img show
+@app.route('/dicom/show/<file_name>')
+def showDicom(file_name):
+    ds = dcmread(file_name)
+    img_min = np.min(ds.pixel_array)-1
+    arr = np.subtract(ds.pixel_array, img_min)
+    img_scale_factor = 14 - math.floor(math.log2(np.max(arr)))
+    arr = np.multiply(arr, 2**img_scale_factor)
+    img = Image.fromarray(arr)
+    return flask.send_file(serve_pil_image(img), mimetype="image/png")
 # Google Drive API (OAuth and File Download) Routes
 
 # A new Thread to call the Gdrive API after an Auth Response is returned to the user.
@@ -600,4 +617,3 @@ def checkDownloadStatus():
     if os.path.isfile(path):
         return flask.Response(json.dumps({"downloadDone": True}), status=200)
     return flask.Response(json.dumps({"downloadDone": False}), status=200)
-

@@ -6,6 +6,7 @@ import shutil
 import string
 import sys
 import pyvips
+import numpy
 from os import listdir
 from os.path import isfile, join
 from spritemaker import createSpritesheet

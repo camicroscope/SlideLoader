@@ -578,6 +578,22 @@ def showDicom(filename):
         return flask.send_file(serve_pil_image(img), mimetype="image/png")
     except BaseException as e:
         return flask.Response(json.dumps({'error': str(e)}), status=400)
+
+# dicom img info
+@app.route('/dicom/info/<filename>')
+def infoDicom(filename):
+    try:
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        ds = dcmread(filepath)
+        pixel_array = ds.pixel_array
+        frames = 1
+        if len(numpy.shape(pixel_array)) == 3:
+            (frames, x, y) = np.shape(pixel_array)
+        elif len(numpy.shape(pixel_array)) == 2:
+            (x, y) = np.shape(pixel_array)
+        return flask.Response(json.dumps({"frames":frames,"x":x,"y":y}), status=200)
+    except BaseException as e:
+        return flask.Response(json.dumps({'error': str(e)}), status=400)
 # Google Drive API (OAuth and File Download) Routes
 
 # A new Thread to call the Gdrive API after an Auth Response is returned to the user.

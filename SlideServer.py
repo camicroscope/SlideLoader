@@ -571,7 +571,7 @@ def showDicom(filename):
         img = Image.fromarray(arr)
         return flask.send_file(serve_pil_image(img), mimetype="image/png")
     except BaseException as e:
-        return flask.Response(json.dumps({'error': e}), status=400)
+        return flask.Response(json.dumps({'error': str(e)}), status=400)
 # Google Drive API (OAuth and File Download) Routes
 
 # A new Thread to call the Gdrive API after an Auth Response is returned to the user.

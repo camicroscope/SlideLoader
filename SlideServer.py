@@ -559,13 +559,14 @@ def serve_pil_image(pil_img):
     return img_io
 
 # dicom img show
-@app.route('/dicom/show/<file_name>')
-def showDicom(file_name):
-    ds = dcmread(file_name)
-    img_min = np.min(ds.pixel_array)-1
-    arr = np.subtract(ds.pixel_array, img_min)
-    img_scale_factor = 14 - math.floor(math.log2(np.max(arr)))
-    arr = np.multiply(arr, 2**img_scale_factor)
+@app.route('/dicom/show/<filename>')
+def showDicom(filename):
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    ds = dcmread(filepath)
+    img_min = numpy.min(ds.pixel_array)-1
+    arr = numpy.subtract(ds.pixel_array, img_min)
+    img_scale_factor = 14 - math.floor(math.log2(numpy.max(arr)))
+    arr = numpy.multiply(arr, 2**img_scale_factor)
     img = Image.fromarray(arr)
     return flask.send_file(serve_pil_image(img), mimetype="image/png")
 # Google Drive API (OAuth and File Download) Routes

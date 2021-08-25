@@ -13,6 +13,7 @@ from PIL import Image
 import urllib
 import flask
 import flask_cors
+from flask import request
 import openslide
 from werkzeug.utils import secure_filename
 import dev_utils

@@ -27,7 +27,7 @@ def getMetadata(filename, upload_folder, extended):
         return msg
     slideData = slide.properties
     if extended:
-        return slideData
+        return {k:v for (k,v) in slideData.items()}
     else:
         metadata['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_X, None)
         metadata['mpp-y'] = slideData.get(openslide.PROPERTY_NAME_MPP_Y, None)

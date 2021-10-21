@@ -13,6 +13,7 @@ from PIL import Image
 import urllib
 import flask
 import flask_cors
+from flask import request
 import openslide
 from werkzeug.utils import secure_filename
 import dev_utils
@@ -184,7 +185,8 @@ def testRoute():
 
 @app.route("/data/one/<filepath>", methods=['GET'])
 def singleSlide(filepath):
-    res = dev_utils.getMetadata(filepath, app.config['UPLOAD_FOLDER'])
+    extended = request.args.get('extended')
+    res = dev_utils.getMetadata(filepath, app.config['UPLOAD_FOLDER'], extended)
     if (hasattr(res, 'error')):
         return flask.Response(json.dumps(res), status=500)
     else:
@@ -203,7 +205,8 @@ def singleThumb(filepath):
 
 @app.route("/data/many/<filepathlist>", methods=['GET'])
 def multiSlide(filepathlist):
-    res = dev_utils.getMetadataList(json.loads(filepathlist), app.config['UPLOAD_FOLDER'])
+    request.args.get('extended')
+    res = dev_utils.getMetadataList(json.loads(filepathlist), app.config['UPLOAD_FOLDER'], extended)
     if (hasattr(res, 'error')):
         return flask.Response(json.dumps(res), status=500)
     else:

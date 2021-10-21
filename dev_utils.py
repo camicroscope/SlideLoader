@@ -10,7 +10,7 @@ post_url = "http://ca-back:4010/data/Slide/post"
 
 
 # given a path, get metadata
-def getMetadata(filename, upload_folder):
+def getMetadata(filename, upload_folder, extended):
     # TODO consider restricting filepath
     metadata = {}
     filepath = os.path.join(upload_folder, filename)
@@ -26,21 +26,24 @@ def getMetadata(filename, upload_folder):
         print(msg)
         return msg
     slideData = slide.properties
-    metadata['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_X, None)
-    metadata['mpp-y'] = slideData.get(openslide.PROPERTY_NAME_MPP_Y, None)
-    metadata['height'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_HEIGHT, None) or slideData.get(
-        "openslide.level[0].height", None)
-    metadata['width'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_WIDTH, None) or slideData.get(
-        "openslide.level[0].width", None)
-    metadata['vendor'] = slideData.get(openslide.PROPERTY_NAME_VENDOR, None)
-    metadata['level_count'] = int(slideData.get('level_count', 1))
-    metadata['objective'] = float(slideData.get(openslide.PROPERTY_NAME_OBJECTIVE_POWER, 0) or
-                                  slideData.get("aperio.AppMag", -1.0))
-    metadata['md5sum'] = file_md5(filepath)
-    metadata['comment'] = slideData.get(openslide.PROPERTY_NAME_COMMENT, None)
-    metadata['study'] = ""
-    metadata['specimen'] = ""
-    return metadata
+    if extended:
+        return {k:v for (k,v) in slideData.items()}
+    else:
+        metadata['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_X, None)
+        metadata['mpp-y'] = slideData.get(openslide.PROPERTY_NAME_MPP_Y, None)
+        metadata['height'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_HEIGHT, None) or slideData.get(
+            "openslide.level[0].height", None)
+        metadata['width'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_WIDTH, None) or slideData.get(
+            "openslide.level[0].width", None)
+        metadata['vendor'] = slideData.get(openslide.PROPERTY_NAME_VENDOR, None)
+        metadata['level_count'] = int(slideData.get('level_count', 1))
+        metadata['objective'] = float(slideData.get(openslide.PROPERTY_NAME_OBJECTIVE_POWER, 0) or
+                                      slideData.get("aperio.AppMag", -1.0))
+        metadata['md5sum'] = file_md5(filepath)
+        metadata['comment'] = slideData.get(openslide.PROPERTY_NAME_COMMENT, None)
+        metadata['study'] = ""
+        metadata['specimen'] = ""
+        return metadata
 
 
 def postslide(img, url):
@@ -55,10 +58,10 @@ def postslide(img, url):
 
 
 # given a list of path, get metadata for each
-def getMetadataList(filenames, upload_folder):
+def getMetadataList(filenames, upload_folder, extended):
     allData = []
     for filename in filenames:
-        allData.append(getMetadata(filename, upload_folder))
+        allData.append(getMetadata(filename, upload_folder, extended))
     return allData
 
 

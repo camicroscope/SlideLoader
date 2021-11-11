@@ -46,7 +46,8 @@ def getMetadata(filename, upload_folder, extended):
         return metadata
 
 
-def postslide(img, url):
+def postslide(img, url, token=''):
+    url = url + token
     payload = json.dumps(img)
     res = requests.post(url, data=payload, headers={'content-type': 'application/json'})
     if res.status_code < 300:

@@ -12,7 +12,7 @@ from dev_utils import post_url
 # GLOBALS (for now)
 config = {'thumbnail_size': 100, 'thread_limit': 20}
 manifest_path = 'manifest.csv'
-
+apiKey = '<apiKey>'
 
 # process expects a single image metadata as dictionary
 def process(img):
@@ -21,7 +21,7 @@ def process(img):
         img['study'] = img.get('study', "")
         img['specimen'] = img.get('specimen', "")
         img['location'] = img['location'] or img['filename']
-        img = postslide(img, post_url)
+        img = postslide(img, post_url, apiKey)
     except BaseException as e:
         img['_status'] = e
     return img

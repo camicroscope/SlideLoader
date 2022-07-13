@@ -10,7 +10,7 @@ UPDATE_URL = "http://ca-back:4010/data/Slide/update"
 IM_SIZE = 256
 THREADS = 5
 REGNERATE = False
-SAVE_DIR = "./images/thumbnails/"
+SAVE_DIR = "/images/thumbnails/"
 
 def setThumb(id, val):
     requests.post(UPDATE_URL + "?_id=" + id, json={'thumbnail': val})

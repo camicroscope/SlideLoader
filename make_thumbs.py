@@ -24,7 +24,7 @@ def process(record):
     file = record["location"]
     name = record["name"]
     # skip ones which already have a thumbnail, unless otherwise specified
-    if REGNERATE or not record["thumbnail"]:
+    if REGNERATE or not record.get("thumbnail", False):
         try:
             slide = openslide.OpenSlide(file)
             gen_thumbnail(name, slide, IM_SIZE, imgtype="png")

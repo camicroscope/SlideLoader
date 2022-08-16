@@ -9,7 +9,7 @@ import requests
 from dev_utils import file_md5
 from dev_utils import postslide
 from dev_utils import post_url
-import make_thumbs
+from make_thumbs import make_thumbnails
 
 # GLOBALS (for now)
 # config = {'thumbnail_size': 100, 'thread_limit': 20}

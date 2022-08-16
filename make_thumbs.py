@@ -42,9 +42,11 @@ def process(record):
             except BaseException as y:
                  return [name, y]
 
-# do it
-manifest = requests.get(SLIDE_LIST_URL).json()
-print(manifest[0])
+def make_thumbnails():
+    manifest = requests.get(SLIDE_LIST_URL).json()
+    print(manifest[0])
+    res = ThreadPool(THREADS).imap_unordered(process, manifest)
+    print([x for x in filter(None,[r for r in res])])
 
-res = ThreadPool(THREADS).imap_unordered(process, manifest)
-print([x for x in filter(None,[r for r in res])])
+if __name__ == "__main__":
+    make_thumbnails()

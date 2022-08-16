@@ -9,6 +9,7 @@ import requests
 from dev_utils import file_md5
 from dev_utils import postslide
 from dev_utils import post_url
+import make_thumbs
 
 # GLOBALS (for now)
 # config = {'thumbnail_size': 100, 'thread_limit': 20}
@@ -174,3 +175,4 @@ with open(manifest_path, 'r') as f:
     # run process on each image
     res = ThreadPool(thread_limit).imap_unordered(process, manifest)
     print([r for r in res])
+    make_thumbnails()

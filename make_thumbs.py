@@ -1,6 +1,7 @@
 import requests
 import openslide
 import pycurl
+import os
 from multiprocessing.pool import ThreadPool
 
 SLIDE_LIST_URL = "http://ca-back:4010/data/Slide/find"
@@ -11,6 +12,14 @@ IM_SIZE = 256
 THREADS = 5
 REGNERATE = False
 SAVE_DIR = "/images/thumbnails/"
+
+# make this SAVE_DIR if it does not exist
+try:
+    os.mkdir(SAVE_DIR)
+    print("created thumbnail SAVE_DIR at", SAVE_DIR)
+except FileExistsError:
+    pass
+
 
 def setThumb(id, val):
     requests.post(UPDATE_URL + "?_id=" + id, json={'thumbnail': val})

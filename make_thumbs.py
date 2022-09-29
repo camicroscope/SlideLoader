@@ -33,10 +33,11 @@ def process(record):
     # skip ones which already have a thumbnail, unless otherwise specified
     if REGNERATE or not record.get("thumbnail", False):
         try:
-            slide = openslide.OpenSlide(file)
-            gen_thumbnail(name, slide, IM_SIZE, imgtype="png")
-            setThumb(record['_id']["$oid"], name+".png")
-            return ""
+            with openslide.OpenSlide(file) as slide:
+                gen_thumbnail(name, slide, IM_SIZE, imgtype="png")
+                setThumb(record['_id']["$oid"], name+".png")
+                # return empty to denote no issue.
+                return ""
         except BaseException as e:
             try:
                  url = IIP_BASE + file + "&WID=200&CVT=png"

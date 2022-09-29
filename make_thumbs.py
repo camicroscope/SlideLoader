@@ -2,15 +2,13 @@ import requests
 import openslide
 import pycurl
 import os
-from multiprocessing.pool import ThreadPool
 
 SLIDE_LIST_URL = "http://ca-back:4010/data/Slide/find"
 IIP_BASE = "http://ca-back:4010/img/IIP/raw/?FIF="
 UPDATE_URL = "http://ca-back:4010/data/Slide/update"
 # TODO -- token input?
 IM_SIZE = 256
-THREADS = 5
-REGNERATE = False
+REGNERATE = True
 SAVE_DIR = "/images/thumbnails/"
 
 # make this SAVE_DIR if it does not exist
@@ -54,7 +52,7 @@ def process(record):
 def make_thumbnails():
     manifest = requests.get(SLIDE_LIST_URL).json()
     print(manifest[0])
-    res = ThreadPool(THREADS).imap_unordered(process, manifest)
+    res = [process(x) for x in manifest]
     print([x for x in filter(None,[r for r in res])])
 
 if __name__ == "__main__":

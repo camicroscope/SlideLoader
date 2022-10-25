@@ -1,16 +1,23 @@
 import requests
 import openslide
 import pycurl
-from multiprocessing.pool import ThreadPool
+import os
 
 SLIDE_LIST_URL = "http://ca-back:4010/data/Slide/find"
 IIP_BASE = "http://ca-back:4010/img/IIP/raw/?FIF="
 UPDATE_URL = "http://ca-back:4010/data/Slide/update"
 # TODO -- token input?
 IM_SIZE = 256
-THREADS = 5
-REGNERATE = False
+REGNERATE = True
 SAVE_DIR = "/images/thumbnails/"
+
+# make this SAVE_DIR if it does not exist
+try:
+    os.mkdir(SAVE_DIR)
+    print("created thumbnail SAVE_DIR at", SAVE_DIR)
+except FileExistsError:
+    pass
+
 
 def setThumb(id, val):
     requests.post(UPDATE_URL + "?_id=" + id, json={'thumbnail': val})
@@ -26,10 +33,11 @@ def process(record):
     # skip ones which already have a thumbnail, unless otherwise specified
     if REGNERATE or not record.get("thumbnail", False):
         try:
-            slide = openslide.OpenSlide(file)
-            gen_thumbnail(name, slide, IM_SIZE, imgtype="png")
-            setThumb(record['_id']["$oid"], name+".png")
-            return ""
+            with openslide.OpenSlide(file) as slide:
+                gen_thumbnail(name, slide, IM_SIZE, imgtype="png")
+                setThumb(record['_id']["$oid"], name+".png")
+                # return empty to denote no issue.
+                return ""
         except BaseException as e:
             try:
                  url = IIP_BASE + file + "&WID=200&CVT=png"
@@ -42,9 +50,11 @@ def process(record):
             except BaseException as y:
                  return [name, y]
 
-# do it
-manifest = requests.get(SLIDE_LIST_URL).json()
-print(manifest[0])
+def make_thumbnails():
+    manifest = requests.get(SLIDE_LIST_URL).json()
+    print(manifest[0])
+    res = [process(x) for x in manifest]
+    print([x for x in filter(None,[r for r in res])])
 
-res = ThreadPool(THREADS).imap_unordered(process, manifest)
-print([x for x in filter(None,[r for r in res])])
+if __name__ == "__main__":
+    make_thumbnails()

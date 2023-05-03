@@ -1,9 +1,9 @@
-FROM python:3-stretch
+FROM python:3
 
 WORKDIR /var/www
 RUN apt-get update
 RUN apt-get -q update --fix-missing
-RUN apt-get -q install -y openslide-tools python-openslide vim
+RUN apt-get -q install -y openslide-tools python3-openslide vim
 RUN apt-get -q install -y libvips libvips-dev
 
 RUN pip install pyvips

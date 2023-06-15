@@ -1,4 +1,4 @@
-FROM python:3-stretch
+FROM python:3-buster
 
 WORKDIR /var/www
 RUN apt-get update

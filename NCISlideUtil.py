@@ -150,10 +150,16 @@ if os.path.exists(collections_path):
         for collection in collections:
             # add specialty
             pid = addSpecialty({'text': collection['specialty']})
+            
+            # add users
+            users = []
+            for user in collection['pathologists']:
+                users.append({'user': user})
+
             for sub in collection['subspecialties']:
                 # add specialty
                 cid = addSpecialty(
-                    {'text': sub, 'pid': pid})
+                    {'text': sub, 'pid': pid, 'users': users})
                 # save the token id and collection id as map
                 if cid is not None:
                     subspecialties_map[sub.lower()] = cid
@@ -163,7 +169,11 @@ if os.path.exists(collections_path):
 with open(flat_file_path, 'r', encoding='utf-8-sig') as f:
     reader = csv.DictReader(f)
     for row in reader:
-        flat_map[row['tokenid'].lower()] = row
+        token = row['tokenid'] or row['token_id'] or None
+        if token:
+            flat_map[row['tokenid'].lower()] = row
+        else:
+            print('no token id in flat_file')
 
 # NCI DOE create a metadata dict END
 

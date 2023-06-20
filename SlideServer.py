@@ -216,7 +216,7 @@ def multiSlide(filepathlist):
 @app.route("/getSlide/<image_name>")
 def getSlide(image_name):
     if(os.path.isfile("/images/"+image_name)):
-        return flask.send_from_directory(app.config["UPLOAD_FOLDER"], filename=image_name, as_attachment=True)
+        return flask.send_from_directory(app.config["UPLOAD_FOLDER"], image_name, as_attachment=True)
     else:
         return flask.Response(json.dumps({"error": "File does not exist"}), status=404)
 
@@ -551,7 +551,7 @@ def roiExtract():
 @app.route('/roiextract/<file_name>')
 def roiextract(file_name):
 
-    return flask.send_from_directory(app.config["ROI_FOLDER"],filename=file_name, as_attachment=True, cache_timeout=0 )
+    return flask.send_from_directory(app.config["ROI_FOLDER"], file_name, as_attachment=True, cache_timeout=0 )
 
 
 # Google Drive API (OAuth and File Download) Routes

@@ -50,6 +50,19 @@ app.config['ROI_FOLDER'] = "/images/roiDownload"
 
 ALLOWED_EXTENSIONS = set(['svs', 'tif', 'tiff', 'vms', 'vmu', 'ndpi', 'scn', 'mrxs', 'bif', 'svslide', 'png', 'jpg'])    
 
+# should be used instead of secure_filename to create new files whose extensions are important.
+# use secure_filename to access previous files.
+# secure_filename ensures security but may result in invalid filenames.
+# secure_filename should be used to access, because users of caMicroscope
+# might have already uploaded what caMicroscope cannot read,
+# and allow reading those.
+def secure_filename_strict(filename):
+    split_filename = secure_filename(filename).rsplit('.', 1)
+    split_filename[-1] = split_filename[-1].lower() # .SvS, .Svs, ... shouldn't be allowed
+    if len(split_filename) < 2:
+        # for example, #.svs -> .svs -> svs, which removes the extension
+        split_filename = ["noname", split_filename[-1]]
+    return '.'.join(split_filename)
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -99,7 +112,11 @@ def start_upload():
         tmppath = os.path.join(app.config['TEMP_FOLDER'], token)
     f = open(tmppath, 'a')
     f.close()
-    return flask.Response(json.dumps({"upload_token": token}), status=200)
+    res_body = {"upload_token": token}
+    body = flask.request.get_json()
+    if body and body.get('filename'):
+        res_body['filename'] = secure_filename_strict(body['filename'])
+    return flask.Response(json.dumps(res_body), status=200)
 
 
 # using the token from the start upload endpoint, post data given offset.
@@ -135,7 +152,7 @@ def finish_upload(token):
     token = secure_filename(token)
     filename = body['filename']
     if filename and allowed_file(filename):
-        filename = secure_filename(filename)
+        filename = secure_filename_strict(filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         tmppath = os.path.join(app.config['TEMP_FOLDER'], token)
         if not os.path.isfile(filepath):
@@ -145,7 +162,7 @@ def finish_upload(token):
             else:
                 return flask.Response(json.dumps({"error": "Token Not Recognised"}), status=400)
         else:
-            return flask.Response(json.dumps({"error": "File with name '" + filename + "' already exists"}), status=400)
+            return flask.Response(json.dumps({"error": "File with name '" + filename + "' already exists", "filepath": filepath}), status=400)
 
     else:
         return flask.Response(json.dumps({"error": "Invalid filename"}), status=400)

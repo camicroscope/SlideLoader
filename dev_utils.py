@@ -36,7 +36,7 @@ def getMetadata(filename, upload_folder, extended):
         metadata['width'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_WIDTH, None) or slideData.get(
             "openslide.level[0].width", None)
         metadata['vendor'] = slideData.get(openslide.PROPERTY_NAME_VENDOR, None)
-        metadata['level_count'] = int(slideData.get('level_count', 1))
+        metadata['level_count'] = int(slide.level_count)
         metadata['objective'] = float(slideData.get(openslide.PROPERTY_NAME_OBJECTIVE_POWER, 0) or
                                       slideData.get("aperio.AppMag", -1.0))
         metadata['md5sum'] = file_md5(filepath)

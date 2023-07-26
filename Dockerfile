@@ -1,9 +1,10 @@
-FROM python:3
+FROM cgd30/openslide:v8main
 
 WORKDIR /var/www
 RUN apt-get update
 RUN apt-get -q update --fix-missing
-RUN apt-get -q install -y openslide-tools python3-openslide vim openssl
+RUN apt-get -q install -y python3-pip openslide-tools python3-openslide vim openssl
+RUN apt-get -q install -y openssl libcurl4-openssl-dev libssl-dev
 
 # Tony has a future use case where we may adapt caMic to GIS visualization
 # install libvips-dev for pyvips. No need for libvips.
@@ -16,8 +17,8 @@ RUN apt-get -q install -y libvips-dev
 # So, we'll have two copies on openslide on the system.
 # By changing LD_LIBRARY_PATH before we launch python
 # we can choose which openslide to run
-# TODO: replace libjpeg-dev with libjpeg-turbo8-dev when current apt repo has it; for performance
-RUN apt-get -q install -y meson libjpeg-dev libexif-dev libgsf-1-dev libtiff-dev libfftw3-dev liblcms2-dev libpng-dev libmagickcore-dev libmagickwand-dev liborc-0.4-dev libopenjp2-7 libgirepository1.0-dev
+# TODO: use libjpeg-turbo8-dev instead of libjpeg-dev if current apt repo has it; for performance
+RUN apt-get -q install -y meson libjpeg-turbo8-dev libexif-dev libgsf-1-dev libtiff-dev libfftw3-dev liblcms2-dev libpng-dev libmagickcore-dev libmagickwand-dev liborc-0.4-dev libopenjp2-7 libgirepository1.0-dev
 WORKDIR /root/src
 RUN git clone https://github.com/libvips/libvips.git --depth=1 --branch=8.14
 RUN mkdir /root/src/libvips/build
@@ -29,11 +30,11 @@ RUN meson compile -C build
 RUN meson test -C build
 RUN meson install -C build
 
-RUN pip install pyvips
-RUN pip install flask
-RUN pip install gunicorn
-RUN pip install greenlet
-RUN pip install gunicorn[eventlet]
+RUN pip install pyvips --break-system-packages
+RUN pip install flask --break-system-packages
+RUN pip install gunicorn --break-system-packages
+RUN pip install greenlet --break-system-packages
+RUN pip install gunicorn[eventlet] --break-system-packages
 
 # verify pyvips can call libvips
 RUN python3 -c "import pyvips"
@@ -72,7 +73,7 @@ COPY ./ ./
 
 RUN cp test_imgs/* /images/
 
-RUN pip3 install -r requirements.txt
+RUN pip3 install -r requirements.txt --break-system-packages
 
 
 EXPOSE 4000

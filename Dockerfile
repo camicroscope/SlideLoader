@@ -31,10 +31,6 @@ RUN meson test -C build
 RUN meson install -C build
 
 RUN pip install pyvips --break-system-packages
-RUN pip install flask --break-system-packages
-RUN pip install gunicorn --break-system-packages
-RUN pip install greenlet --break-system-packages
-RUN pip install gunicorn[eventlet] --break-system-packages
 
 # verify pyvips can call libvips
 RUN python3 -c "import pyvips"
@@ -62,6 +58,13 @@ RUN ! python3 -c "import pyvips; pyvips.Image.openslideload(('CMU-1-Small-Region
 # but if you do LD_LIBRARY_PATH="${LD_LIBRARY_PATH_ORIG}" python a.py
 # or likewise using docker ENV command or os.environ in python before
 # importing, this will remove the no-openslide libvips from path.
+
+WORKDIR /root/src/
+
+RUN pip install flask --break-system-packages
+RUN pip install gunicorn --break-system-packages
+RUN pip install greenlet --break-system-packages
+RUN pip install gunicorn[eventlet] --break-system-package
 
 run openssl version -a
 

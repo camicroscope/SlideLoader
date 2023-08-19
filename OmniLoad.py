@@ -53,7 +53,7 @@ def openslidedata(manifest):
     for img in manifest:
         img['location'] = img.get("path", "") or img.get("location", "") or img.get("filename", "") or img.get("file", "")
         metadata = dev_utils.getMetadata(img['location'], False, True)
-        for k, v in metadata:
+        for k, v in metadata.items():
           if k not in img:
             img[k] = v
         # required values which are often unused

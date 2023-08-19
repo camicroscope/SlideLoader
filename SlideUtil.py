@@ -35,7 +35,7 @@ def gen_thumbnail(filename, slide, size, imgtype="png"):
 
 def openslidedata(metadata):
     metadata_retrieved = getMetadata(metadata['location'], False, True)
-    for k, v in metadata_retrieved:
+    for k, v in metadata_retrieved.items():
         if k not in metadata:
             metadata[k] = v
     metadata['timestamp'] = time.time()

@@ -8,6 +8,7 @@ import argparse # to read arguments
 import json # for json in and out
 import requests # for api and pathdb in and out
 import hashlib
+import dev_utils
 
 # for large csv fields, especially segmentations
 csv.field_size_limit(sys.maxsize)
@@ -51,21 +52,10 @@ def file_md5(fileName):
 def openslidedata(manifest):
     for img in manifest:
         img['location'] = img.get("path", "") or img.get("location", "") or img.get("filename", "") or img.get("file", "")
-        slide = openslide.OpenSlide(img['location'])
-        slideData = slide.properties
-        img['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_X, None)
-        img['mpp-y'] = slideData.get(openslide.PROPERTY_NAME_MPP_Y, None)
-        img['mpp'] = img['mpp-x'] or img['mpp-y']
-        img['height'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_HEIGHT, None) or slideData.get(
-            "openslide.level[0].height", None)
-        img['width'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_WIDTH, None) or slideData.get(
-            "openslide.level[0].width", None)
-        img['vendor'] = slideData.get(openslide.PROPERTY_NAME_VENDOR, None)
-        img['level_count'] = int(slideData.get('level_count', 1))
-        img['objective'] = float(slideData.get(openslide.PROPERTY_NAME_OBJECTIVE_POWER, 0) or
-                                      slideData.get("aperio.AppMag", -1.0))
-        img['md5sum'] = file_md5(img['location'])
-        img['comment'] = slideData.get(openslide.PROPERTY_NAME_COMMENT, None)
+        metadata = dev_utils.getMetadata(img['location'], False, True)
+        for k, v in metadata:
+          if k not in img:
+            img[k] = v
         # required values which are often unused
         img['study'] = img.get('study', "")
         img['specimen'] = img.get('specimen', "")

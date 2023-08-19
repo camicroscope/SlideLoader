@@ -203,7 +203,7 @@ def testRoute():
 @app.route("/data/one/<filepath>", methods=['GET'])
 def singleSlide(filepath):
     extended = request.args.get('extended')
-    res = dev_utils.getMetadata(join(app.config['UPLOAD_FOLDER'], filepath), extended)
+    res = dev_utils.getMetadata(join(app.config['UPLOAD_FOLDER'], filepath), extended, False)
     if (hasattr(res, 'error')):
         return flask.Response(json.dumps(res), status=500)
     else:
@@ -226,7 +226,7 @@ def multiSlide(filepathlist):
     extended = request.args.get('extended')
     filenames = json.loads(filepathlist)
     paths = [join(app.config['UPLOAD_FOLDER'], filename) for filename in filenames]
-    res = dev_utils.getMetadataList(paths, extended)
+    res = dev_utils.getMetadataList(paths, extended, False)
     if (hasattr(res, 'error')):
         return flask.Response(json.dumps(res), status=500)
     else:

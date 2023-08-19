@@ -10,10 +10,12 @@ post_url = "http://ca-back:4010/data/Slide/post"
 
 
 # given a path, get metadata
-def getMetadata(filepath, extended):
+def getMetadata(filepath, extended, raise_exception):
     # TODO consider restricting filepath
     metadata = {}
     if not os.path.isfile(filepath):
+        if raise_exception:
+            raise ValueError("No such file")
         msg = {"error": "No such file"}
         print(msg)
         return msg
@@ -21,6 +23,8 @@ def getMetadata(filepath, extended):
     try:
         slide = openslide.OpenSlide(filepath)
     except BaseException as e:
+        if raise_exception:
+            raise e
         msg = {"type": "Openslide", "error": str(e)}
         print(msg)
         return msg
@@ -59,10 +63,10 @@ def postslide(img, url, token=''):
 
 
 # given a list of path, get metadata for each
-def getMetadataList(filenames, extended):
+def getMetadataList(filenames, extended, raise_exception):
     allData = []
     for filename in filenames:
-        allData.append(getMetadata(filename, extended))
+        allData.append(getMetadata(filename, extended, raise_exception))
     return allData
 
 

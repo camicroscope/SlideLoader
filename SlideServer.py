@@ -6,8 +6,7 @@ import shutil
 import string
 import sys
 import pyvips
-from os import listdir
-from os.path import isfile, join
+import os
 from spritemaker import createSpritesheet
 from PIL import Image
 import urllib
@@ -203,7 +202,7 @@ def testRoute():
 @app.route("/data/one/<filepath>", methods=['GET'])
 def singleSlide(filepath):
     extended = request.args.get('extended')
-    res = dev_utils.getMetadata(filepath, app.config['UPLOAD_FOLDER'], extended)
+    res = dev_utils.getMetadata(os.path.join(app.config['UPLOAD_FOLDER'], filepath), extended, False)
     if (hasattr(res, 'error')):
         return flask.Response(json.dumps(res), status=500, mimetype='text/json')
     else:
@@ -223,8 +222,10 @@ def singleThumb(filepath):
 
 @app.route("/data/many/<filepathlist>", methods=['GET'])
 def multiSlide(filepathlist):
-    request.args.get('extended')
-    res = dev_utils.getMetadataList(json.loads(filepathlist), app.config['UPLOAD_FOLDER'], extended)
+    extended = request.args.get('extended')
+    filenames = json.loads(filepathlist)
+    paths = [os.path.join(app.config['UPLOAD_FOLDER'], filename) for filename in filenames]
+    res = dev_utils.getMetadataList(paths, extended, False)
     if (hasattr(res, 'error')):
         return flask.Response(json.dumps(res), status=500, mimetype='text/json')
     else:

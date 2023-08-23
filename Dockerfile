@@ -68,7 +68,7 @@ RUN pip install gunicorn[eventlet] --break-system-package
 
 run openssl version -a
 
-ENV FLASK_ENV development
+ENV FLASK_DEBUG True
 
 RUN mkdir -p /images/uploading
 

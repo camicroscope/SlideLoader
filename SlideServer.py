@@ -13,7 +13,7 @@ import urllib
 import flask
 import flask_cors
 from flask import request
-import openslide
+from image_reader import construct_reader
 from werkzeug.utils import secure_filename
 import dev_utils
 import requests
@@ -23,6 +23,7 @@ import pathlib
 import logging
 from gDriveDownload import start, afterUrlAuth, callApi
 from threading import Thread
+from file_extensions import ALLOWED_EXTENSIONS
 
 try:
     from io import BytesIO
@@ -47,7 +48,6 @@ app.config['SECRET_KEY'] = os.urandom(24)
 app.config['ROI_FOLDER'] = "/images/roiDownload"
 
 
-ALLOWED_EXTENSIONS = set(['svs', 'tif', 'tiff', 'vms', 'vmu', 'ndpi', 'scn', 'mrxs', 'bif', 'svslide', 'png', 'jpg', 'dcm'])    
 
 # should be used instead of secure_filename to create new files whose extensions are important.
 # use secure_filename to access previous files.
@@ -73,14 +73,19 @@ def getThumbnail(filename, size=50):
     if not os.path.isfile(filepath):
         return {"error": "No such file"}
     try:
-        slide = openslide.OpenSlide(filepath)
+        slide = construct_reader(filepath)
+    except BaseException as e:
+        # here, e has attribute "error"
+        return e
+
+    try:
         thumb = slide.get_thumbnail((size, size))
         buffer = BytesIO()
         thumb.save(buffer, format="PNG")
         data = 'data:image/png;base64,' + str(base64.b64encode(buffer.getvalue()))[2:-1]
         return {"slide": data, "size": size}
     except BaseException as e:
-        return {"type": "Openslide", "error": str(e)}
+        return {"type": slide.reader_name(), "error": str(e)}
 
 @app.route('/slide/<filename>/pyramid/<dest>', methods=['POST'])
 def makePyramid(filename, dest):
@@ -507,7 +512,7 @@ def convert(fname, input_dir , output_dir):
     try:
         
         save_name = fname.split(".")[0] + ".jpg"
-        os_obj = openslide.OpenSlide(input_dir+"/"+fname)
+        os_obj = construct_reader(input_dir+"/"+fname)
         w, h = os_obj.dimensions
         w_rep, h_rep = int(w/UNIT_X)+1, int(h/UNIT_Y)+1
         w_end, h_end = w%UNIT_X, h%UNIT_Y

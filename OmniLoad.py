@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import openslide # to get required slide metadata
+import dev_utils # to get required slide metadata
 import csv # to read csv
 import sys # for csv limit
 import os # for os and filepath utils
@@ -8,7 +8,6 @@ import argparse # to read arguments
 import json # for json in and out
 import requests # for api and pathdb in and out
 import hashlib
-import dev_utils
 
 # for large csv fields, especially segmentations
 csv.field_size_limit(sys.maxsize)

@@ -24,6 +24,7 @@ import logging
 from gDriveDownload import start, afterUrlAuth, callApi
 from threading import Thread
 from file_extensions import ALLOWED_EXTENSIONS
+from time import sleep
 
 try:
     from io import BytesIO

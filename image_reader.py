@@ -54,10 +54,9 @@ class ImageReader(metaclass=ABCMeta):
         pass
 
 from OpenSlideReader import OpenSlideReader
-from BioFormatsReader import BioFormatsReader
 
 # Decreasing order of importance
-readers = [OpenSlideReader, BioFormatsReader]
+readers = [OpenSlideReader]
 
 
 # Replaces the constructor of the abstract class

@@ -1,6 +1,10 @@
 # SlideLoader
 Tool for loading slides and getting slide metadata using openslide
 
+## Setting up
+
+When used outside of caMicroscope/Distro Docker, the [BFBridge](https://github.com/camicroscope/BFBridge) folder needs to copied to this repository manually. (Not only its contents, but making it a subfolder of this repository)
+
 ## Usage
 
 ### Upload

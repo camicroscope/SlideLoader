@@ -6,6 +6,8 @@ RUN apt-get -q update --fix-missing
 RUN apt-get -q install -y python3-pip openslide-tools python3-openslide vim openssl
 RUN apt-get -q install -y openssl libcurl4-openssl-dev libssl-dev
 
+### Install libvips
+
 # Tony has a future use case where we may adapt caMic to GIS visualization
 # install libvips-dev for pyvips. No need for libvips.
 RUN apt-get -q install -y libvips-dev
@@ -59,6 +61,13 @@ RUN ! python3 -c "import pyvips; pyvips.Image.openslideload(('CMU-1-Small-Region
 # or likewise using docker ENV command or os.environ in python before
 # importing, this will remove the no-openslide libvips from path.
 
+### Install BioFormats wrapper
+
+WORKDIR /root/src/BFBridge/python
+RUN python3 compile_bfbridge.py
+
+### Set up the server
+
 WORKDIR /root/src/
 
 RUN pip install flask --break-system-packages
@@ -83,7 +92,7 @@ EXPOSE 4001
 
 #debug/dev only
 # ENV FLASK_APP SlideServer.py
-# CMD python -m flask run --host=0.0.0.0 --port=4000
+# CMD python3 -m flask run --host=0.0.0.0 --port=4000
 
 # The Below BROKE the ability for users to upload images.
 # # non-root user

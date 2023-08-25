@@ -3,10 +3,14 @@ import os
 import json
 import requests
 import image_reader
+import threading
 
 post_url = "http://ca-back:4010/data/Slide/post"
 
 
+
+# Keep BioFormats Java thread alive; to minimize reattaching thread
+keep_alive_for_thread = threading.local()
 
 # given a path, get metadata
 def getMetadata(filepath, extended, raise_exception):

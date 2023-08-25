@@ -5,6 +5,8 @@ flask-cors
 requests
 numpy
 Pillow
+cffi
+ome-types
 google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib

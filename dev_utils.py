@@ -2,8 +2,7 @@ import hashlib
 import os
 import json
 import requests
-
-import openslide
+import image_reader
 
 post_url = "http://ca-back:4010/data/Slide/post"
 
@@ -12,41 +11,28 @@ post_url = "http://ca-back:4010/data/Slide/post"
 # given a path, get metadata
 def getMetadata(filepath, extended, raise_exception):
     # TODO consider restricting filepath
-    metadata = {}
     if not os.path.isfile(filepath):
         if raise_exception:
             raise ValueError("No such file")
         msg = {"error": "No such file"}
         print(msg)
         return msg
-    metadata['location'] = filepath
     try:
-        slide = openslide.OpenSlide(filepath)
+        slide = image_reader.construct_reader(filepath)
     except BaseException as e:
         if raise_exception:
             raise e
-        msg = {"type": "Openslide", "error": str(e)}
-        print(msg)
-        return msg
-    slideData = slide.properties
-    if extended:
-        return {k:v for (k,v) in slideData.items()}
-    else:
-        metadata['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_X, None)
-        metadata['mpp-y'] = slideData.get(openslide.PROPERTY_NAME_MPP_Y, None)
-        metadata['height'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_HEIGHT, None) or slideData.get(
-            "openslide.level[0].height", None)
-        metadata['width'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_WIDTH, None) or slideData.get(
-            "openslide.level[0].width", None)
-        metadata['vendor'] = slideData.get(openslide.PROPERTY_NAME_VENDOR, None)
-        metadata['level_count'] = int(slide.level_count)
-        metadata['objective'] = float(slideData.get(openslide.PROPERTY_NAME_OBJECTIVE_POWER, 0) or
-                                      slideData.get("aperio.AppMag", -1.0))
-        metadata['md5sum'] = file_md5(filepath)
-        metadata['comment'] = slideData.get(openslide.PROPERTY_NAME_COMMENT, None)
-        metadata['study'] = ""
-        metadata['specimen'] = ""
-        return metadata
+        # here, e has attribute "error"
+        return str(e)
+
+    try:
+        metadata = slide.get_basic_metadata(extended)
+    except BaseException as e:
+        if raise_exception:
+            raise e
+        return {'error': str(e)}
+    metadata['location'] = filepath
+    return metadata
 
 
 def postslide(img, url, token=''):

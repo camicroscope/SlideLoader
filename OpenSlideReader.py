@@ -55,6 +55,7 @@ class OpenSlideReader(image_reader.ImageReader):
             metadata['objective'] = float(slideData.get(openslide.PROPERTY_NAME_OBJECTIVE_POWER, 0) \
                 or slideData.get("aperio.AppMag", -1.0))
             metadata['comment'] = slideData.get(openslide.PROPERTY_NAME_COMMENT, None)
+            # caMicroscope expects some value for study and specimen for slides, add empty string as defauly.
             metadata['study'] = ""
             metadata['specimen'] = ""
             metadata['md5'] = dev_utils.file_md5(self._image_path)

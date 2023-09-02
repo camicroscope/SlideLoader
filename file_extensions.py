@@ -1,6 +1,9 @@
+# Updating BioFormats:
 # Clone github.com/ome/bioformats and run:
 # grep -r -e "static final String.*\[\].*SUFFIXES" -e "super.*new String\[\]" -e "super(.*," -A 2 -h | grep " .* .* " | grep -v "=$" | grep -v "{$" | sort -u
-# then manually copying extensions, keeping them in order
+# then save the output to a file and "diff" it with _file_extensions_bioformatsvX.X.X.txt
+# then manually copy the new extensions, making an attempt to preserve the order
+# then delete the previous _file_extensions_bioformatsvX.X.X.txt and rename the new output
 # The command says: match 'static final String[] XYZ_SUFFIXES' or 'super("XYZFILES", ".xyz")'
 # and print next two lines but keep only lines with at least two space and discard those
 # ending with "=" or "{" (because in this case only the next line(s) are relevant

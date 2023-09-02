@@ -1,0 +1,348 @@
+		domains = new String[] {FormatTools.LM_DOMAIN};
+		super("SlideBook 7 SLD (native)", new String[] {"sldy"});
+        CompressionType.J2K.getCompression()};
+        CompressionType.UNCOMPRESSED.getCompression()};
+        super("Vaa3d", new String[]{"v3draw"});
+      "ano", "cfg", "csv", "htm", "rec", "tim", "zpo", "tif"});
+      "dic", "dcm", "dicom", "jp2", "j2ki", "j2kr", "raw", "ima"});
+      AWTImageTools.makeColorSpace(nChannels), nChannels == 4, false,
+      COMPRESSION_UNCOMPRESSED,
+      ColorModel.TRANSLUCENT, dataType);
+      CompressionType.UNCOMPRESSED.getCompression(),
+      FormatTools.UNKNOWN_DOMAIN};
+      new String[] {"cr2", "crw", "jpg", "thm", "wav", "tif", "tiff"});
+      new String[] {"dv", "r3d", "r3d_d3d", "dv.log", "r3d.log"});
+      new String[] {"mvd2", "aisf", "aiix", "dat", "atsf"});
+      new String[] {"ome.tif", "ome.tiff", "ome.tf2", "ome.tf8", "ome.btf"});
+      new String[] {"pbm", "pgm", "ppm"});
+      new String[] {"xdce", "xml", "tiff", "tif", "xlog"});
+      new String[] {CompressionType.UNCOMPRESSED.getCompression(),
+      new String[] {FormatTools.ASTRONOMY_DOMAIN, FormatTools.UNKNOWN_DOMAIN};
+      null, path);
+      suffixNecessary = false;
+      suffixSufficient = false;
+      super("JPEG", new String[] {"jpg", "jpeg", "jpe"});
+      super(name, recType, offset, recLength);
+      super(name, type, offset, length);
+    "dic", "dcm", "dicom", "j2ki", "j2kr"
+    /**
+    // call getStatistics() to ensure that single-slice stacks have the
+    // correct pixel type
+    // remove unavailable stack formats
+    ClassList<IFormatReader> classes = ImageReader.getDefaultReaderClasses();
+    LMSFileReader.log = LOGGER;
+    bankData = dataArray;
+    bankData = new byte[1][];
+    bankData = new int[1][];
+    bankData[0] = dataArray;
+    canSeparateSeries = false;
+    compressionTypes = new String[] {CompressionType.J2K_LOSSY.getCompression(), 
+    datasetDescription = "One .hed file plus one similarly-named .img file";
+    datasetDescription = "One .htd file plus one or more .tif files";
+    datasetDescription = "One .ndpis file and at least one .ndpi file";
+    datasetDescription = "One .omp2info file and at least one .oir or .vsi file";
+    datasetDescription = "One .vms file plus several .jpg files";
+    datasetDescription = "One or more .c01 files";
+    domains = FormatTools.NON_GRAPHICS_DOMAINS;
+    domains = new String[] {FormatTools.ASTRONOMY_DOMAIN};
+    domains = new String[] {FormatTools.EM_DOMAIN};
+    domains = new String[] {FormatTools.FLIM_DOMAIN};
+    domains = new String[] {FormatTools.GEL_DOMAIN};
+    domains = new String[] {FormatTools.GRAPHICS_DOMAIN};
+    domains = new String[] {FormatTools.HCS_DOMAIN};
+    domains = new String[] {FormatTools.HISTOLOGY_DOMAIN, FormatTools.LM_DOMAIN};
+    domains = new String[] {FormatTools.HISTOLOGY_DOMAIN};
+    domains = new String[] {FormatTools.LM_DOMAIN, FormatTools.FLIM_DOMAIN,
+    domains = new String[] {FormatTools.LM_DOMAIN, FormatTools.HCS_DOMAIN};
+    domains = new String[] {FormatTools.LM_DOMAIN, FormatTools.HISTOLOGY_DOMAIN};
+    domains = new String[] {FormatTools.LM_DOMAIN};
+    domains = new String[] {FormatTools.MEDICAL_DOMAIN,
+    domains = new String[] {FormatTools.MEDICAL_DOMAIN, FormatTools.LM_DOMAIN};
+    domains = new String[] {FormatTools.MEDICAL_DOMAIN};
+    domains = new String[] {FormatTools.SEM_DOMAIN};
+    domains = new String[] {FormatTools.SPM_DOMAIN};
+    domains = new String[] {FormatTools.UNKNOWN_DOMAIN};
+    domains = new String[]{FormatTools.FLIM_DOMAIN};
+    handle = new ByteArrayHandle(INITIAL_CAPACITY);
+    hasCompanionFiles = true;
+    helper = new DataBufferShort(data, size);
+    helper = new DataBufferShort(data, size, offset);
+    helper = new DataBufferShort(data, size, offsets);
+    helper = new DataBufferShort(size);
+    helper = new DataBufferShort(size, numbanks);
+    ifds = new IFDList();
+    imageFormat = checkImageFormat();
+    imageFormat = xlif.getImageFormat();
+    index = -1;
+    initChildren();
+    initImagePaths();
+    inputOrder = dimensionOrder;
+    legacyReader = new TiffJAIReader();
+    legacyReader = new TileJPEGReader();
+    nativeReader = new DefaultJPEGReader();
+    nativeReader = new TiffReader();
+    new String[] {"apl", "tnb", "mtb" };
+    new String[] {"tif", "tiff", "im"};
+    new String[] {"xml", "xlog"};
+    new String[] {FLEX_SUFFIX, MEA_SUFFIX, RES_SUFFIX};
+    new String[] {MEA_SUFFIX, RES_SUFFIX};
+    noSubresolutions = true;
+    panel = getTextPanel();
+    reader = new ImageProcessorReader(r);
+    suffixNecessary = false;
+    suffixNecessary = false; // allow extensionless IPLab files
+    suffixNecessary = true;
+    suffixSufficient = false;
+    suffixSufficient = true;
+    super( "CellVoyager", new String[] { "tif", "xml" } );
+    super("AIM", "aim");
+    super("ARF", "arf");
+    super("Adobe Photoshop TIFF", new String[] {"tif", "tiff"});
+    super("Adobe Photoshop", "psd");
+    super("Alicona AL3D", "al3d");
+    super("Amersham Biosciences GEL", new String[] {"gel"});
+    super("Amira", new String[] {"am", "amiramesh", "grey", "hx", "labels"});
+    super("Analyze 7.5", new String[] {"img", "hdr"});
+    super("Andor SIF", "sif");
+    super("Animated PNG", "png");
+    super("Aperio AFI", "afi");
+    super("Aperio SVS", new String[] {"svs"});
+    super("Audio Video Interleave", "avi");
+    super("BD Pathway", new String[] {"exp", "tif"});
+    super("BDV", new String[] {"xml", "h5"});
+    super("Bio-Rad GEL", "1sc");
+    super("Bio-Rad PIC", new String[] {"pic", "xml", "raw"});
+    super("Bio-Rad SCN", "scn");
+    super("Bitplane Imaris 3 (TIFF)", "ims");
+    super("Bitplane Imaris 5.5 (HDF)", "ims");
+    super("Bitplane Imaris", "ims");
+    super("Bruker", "");
+    super("Burleigh", "img");
+    super("Canon RAW", new String[] {"cr2", "crw", "jpg", "thm", "wav"});
+    super("CellH5 (HDF)", "ch5");
+    super("CellSens VSI", new String[] {"vsi", "ets"});
+    super("CellWorx", new String[] {"pnl", "htd", "log"});
+    super("Cellomics C01", new String[] {"c01", "dib"});
+    super("Compix Simple-PCI", "cxd");
+    super("DICOM", "dcm");
+    super("DNG",
+    super("Deltavision",
+    super("ECAT7", "v");
+    super("Encapsulated PostScript", new String[] {"eps", "epsi", "ps"});
+    super("Encapsulated PostScript", new String[] {"eps", "epsi"});
+    super("Evotec Flex", SUFFIXES);
+    super("Extended leica file", "xlef");
+    super("FEI TIFF", new String[] {"tif", "tiff"});
+    super("FEI/Philips", "img");
+    super("File pattern", new String[] {"pattern"});
+    super("Flexible Image Transport System", new String[] {"fits", "fts"});
+    super("FlowSight", "cif");
+    super("Fuji LAS 3000", new String[] {"img", "inf"});
+    super("Gatan DM2", "dm2");
+    super("Gatan Digital Micrograph", new String[] {"dm3", "dm4"});
+    super("Graphics Interchange Format", "gif");
+    super("Hamamatsu Aquacosmos", "naf");
+    super("Hamamatsu HIS", "his");
+    super("Hamamatsu NDPI", new String[] {"ndpi"});
+    super("Hamamatsu NDPIS", "ndpis");
+    super("Hamamatsu VMS", "vms");
+    super("Hitachi", "txt");
+    super("I2I", new String[] {"i2i"});
+    super("IMAGIC", new String[] {"hed", "img"});
+    super("IMOD", "mod");
+    super("INR", "inr");
+    super("IPLab", "ipl");
+    super("IVision", "ipm");
+    super("Imacon", new String[] {"fff"});
+    super("Image Cytometry Standard", new String[] {"ics", "ids"});
+    super("Image Cytometry Standard", new String[] {"ids", "ics"});
+    super("Image-Pro Sequence", new String[] {"seq", "ips"});
+    super("Image-Pro Workspace", "ipw");
+    super("Improvision TIFF", new String[] {"tif", "tiff"});
+    super("InCell 1000/2000",
+    super("InCell 3000", "frm");
+    super("Inveon", new String[] {"hdr"});
+    super("Ionpath MIBI", new String[] {"tif, tiff"});
+    super("JEOL", new String[] {"dat", "img", "par"});
+    super("JPEG", new String[] {"jpg", "jpeg", "jpe"});
+    super("JPEG", new String[] {"jpg", "jpeg", "jpe"}, "jpeg");
+    super("JPEG-2000", "jp2");
+    super("JPEG-2000", new String[] {"jp2", "j2k", "jpf"});
+    super("JPK Instruments", "jpk");
+    super("JPX", "jpx");
+    super("KLB", "klb");
+    super("Khoros XV", "xv");
+    super("Kodak Molecular Imaging", "bip");
+    super("LEO", new String[] {"sxm", "tif", "tiff"});
+    super("LI-FLIM", "fli");
+    super("Laboratory Imaging", "lim");
+    super("Lavision Imspector", "msr");
+    super("Leica Image File Format", "lif");
+    super("Leica Object Format", "lof");
+    super("Leica SCN", new String[] {"scn"});
+    super("Leica TCS TIFF", new String[] {"tif", "tiff", "xml"});
+    super("Leica", new String[] {"lei", "tif", "tiff", "raw"});
+    super("Li-Cor L2D", new String[] {"l2d", "scn", "tif"});
+    super("MIAS", new String[] {"tif", "tiff", "txt"});
+    super("MINC MRI", "mnc");
+    super("Medical Research Council", MRC_SUFFIXES);
+    super("MetaXpress TIFF", new String[] {"htd", "tif"});
+    super("Metamorph STK", new String[] {"stk", "nd", "scan", "tif", "tiff"});
+    super("Metamorph TIFF", new String[] {"tif", "tiff"});
+    super("Micro-Manager", new String[] {"tif", "tiff", "txt", "xml"});
+    super("MicroCT", "vff");
+    super("Mikroscan TIFF", new String[] {"tif", "tiff"});
+    super("Minolta MRW", "mrw");
+    super("Molecular Imaging", "stp");
+    super("Multiple images", ".*");
+    super("Multiple-image Network Graphics", "mng");
+    super("NIfTI", new String[] {"nii", "img", "hdr", "nii.gz"});
+    super("NOAA-HRD Gridded Data Format", "");
+    super("NRRD", new String[] {"nrrd", "nhdr"});
+    super("Nikon Elements TIFF", new String[] {"tif", "tiff"});
+    super("Nikon ND2", new String[] {"nd2", "jp2"});
+    super("Nikon NEF", new String[] {"nef", "tif", "tiff"});
+    super("Nikon TIFF", new String[] {"tif", "tiff"});
+    super("OBF", new String[] {"obf", "msr"});
+    super("OME-TIFF",
+    super("OME-TIFF", OME_TIFF_SUFFIXES);
+    super("OME-XML", new String[] {"ome", "ome.xml"});
+    super("Olympus .omp2info", "omp2info");
+    super("Olympus APL", new String[] {"apl", "tnb", "mtb", "tif"});
+    super("Olympus FV1000", new String[] {"oib", "oif", "pty", "lut"});
+    super("Olympus Fluoview/ABD TIFF", new String[] {"tif", "tiff"});
+    super("Olympus OIR", "oir");
+    super("Olympus SIS TIFF", new String[] {"tif", "tiff"});
+    super("Olympus ScanR", new String[] {"dat", "xml", "tif"});
+    super("Olympus Slidebook", new String[] {"sld", "spl"});
+    super("Openlab LIFF", "liff");
+    super("Openlab RAW", "raw");
+    super("Oxford Instruments", "top");
+    super("PCO-RAW", new String[] {"pcoraw", "rec"});
+    super("PCX", "pcx");
+    super("PICT", new String[] {"pict", "pct"});
+    super("POV-Ray", "df3");
+    super("Perkin Elmer Densitometer", new String[] {"hdr", "img"});
+    super("Perkin-Elmer Nuance IM3", "im3");
+    super("PerkinElmer Columbus", new String[] {"xml"});
+    super("PerkinElmer Operetta", new String[] {"tif", "tiff", "xml"});
+    super("PerkinElmer Vectra/QPTIFF", new String[] {"tiff", "tif", "qptiff"});
+    super("PicoQuant Bin", "bin");
+    super("Portable Any Map",
+    super("Prairie TIFF", new String[] {"tif", "tiff", "cfg", "env", "xml"});
+    super("Princeton Instruments SPE", "spe");
+    super("Pyramid TIFF", new String[] {"tif", "tiff"});
+    super("Quesant AFM", "afm");
+    super("QuickTime", "mov");
+    super("RHK Technologies", new String[] {"sm2", "sm3"});
+    super("SBIG", "");
+    super("SM Camera", "");
+    super("SPC FIFO Data", new String[] {"spc", "set"});
+    super("SPCImage Data", "sdt");
+    super("SPIDER", "spi");
+    super("Seiko", new String[] {"xqd", "xqf"});
+    super("SimplePCI TIFF", new String[] {"tif", "tiff"});
+    super("Simulated data", "fake");
+    super("Slidebook TIFF", new String[] {"tif", "tiff"});
+    super("Tagged Image File Format", TIFF_SUFFIXES);
+    super("Tagged Image File Format", TiffReader.TIFF_SUFFIXES);
+    super("Tecan Spark Cyto", new String[] {"db"});
+    super("Text", new String[] {"txt", "csv"});
+    super("Tile JPEG", new String[] {"jpg", "jpeg"});
+    super("TillVision", new String[] {"vws", "pst", "inf"});
+    super("TopoMetrix", new String[] {"tfr", "ffr", "zfr", "zfp", "2fl"});
+    super("Trestle", new String[] {"tif"});
+    super("Truevision Targa", "tga");
+    super("UBM", "pr3");
+    super("Unisoku STM", new String[] {"hdr", "dat"});
+    super("VG SAM", "dti");
+    super("Varian FDF", "fdf");
+    super("Veeco", "hdf");
+    super("Ventana .bif", new String[] {"bif"});
+    super("Visitech XYS", new String[] {"xys", "html"});
+    super("Volocity Library Clipping", "acff");
+    super("Volocity Library",
+    super("WA Technology TOP", "wat");
+    super("Windows Bitmap", "bmp");
+    super("Yokogawa CV7000", new String[] {"wpi"});
+    super("Zeiss AxioVision TIFF", TIFF_SUFFIXES);
+    super("Zeiss CZI", "czi");
+    super("Zeiss LMS", "lms");
+    super("Zeiss Laser-Scanning Microscopy", new String[] {"lsm", "mdb"});
+    super("Zeiss Vision Image (ZVI)", "zvi");
+    super("Zip", "zip");
+    super("importer-options.txt", ImporterOptions.class);
+    super(DataBuffer.TYPE_BYTE, size);
+    super(DataBuffer.TYPE_INT, size);
+    super(DataBuffer.TYPE_USHORT, size);
+    super(DataBuffer.TYPE_USHORT, size, 1, offset);
+    super(DataBuffer.TYPE_USHORT, size, data.length);
+    super(DataBuffer.TYPE_USHORT, size, data.length, offsets);
+    super(DataBuffer.TYPE_USHORT, size, numbanks);
+    super(filepath, null);
+    super(filepath, parent);
+    super(format, exts);
+    super(format, suffix);
+    super(format, suffixes);
+    super(getWidth(r, path, r.getSeries()), getHeight(r, path, r.getSeries()),
+    super(imp, ic);
+    super(key, save, label, info);
+    super(message, cause);
+    super(name, extensions);
+    super(name, suffix);
+    super(name, suffixes);
+    super(pixelBits, makeBitArray(nChannels, pixelBits),
+    super(r, seriesNo);
+    super(s, cause);
+    super(store, filter);
+    super(title, headings, data, w, h);
+    super(title, stack);
+    super(type, components);
+    super(x, y, w, h);
+    this.datasetDescription = "Directory with 2 master files 'MeasurementResult.xml' and 'MeasurementResult.ome.xml', used to stitch together several TIF files.";
+    this.defaultValue = defaultValue;
+    this.hasCompanionFiles = true;
+    this.kind = kind;
+    this.op = op;  this.options = options;  this.cf = cf;
+    this.possibleValues = possibleValues;
+    this.value = defaultValue;
+    tileCount = xlif.getTileCount();
+    {"mrc", "st", "ali", "map", "rec", "mrcs"};
+    {"ome.tiff", "ome.tif", "ome.tf2", "ome.tf8", "ome.btf", "companion.ome"};
+    {"tif", "tiff", "tf2", "tf8", "btf"};
+    }
+  /** Constructs a format reader with the given name and default suffixes. */
+  /** Constructs a format writer with the given name and default suffixes. */
+  /** Constructs a new BaseTiffReader. */
+  /** TIFF tiles must be of a height and width divisible by 16. */
+  // -- Fields --
+  // -- IFormatWriter API methods --
+  // Private tags present in Prairie TIFF files
+  private static final String[] BIG_TIFF_SUFFIXES = {"tf2", "tf8", "btf"};
+  private static final String[] METADATA_SUFFIXES = new String[] {"dat", "xml"};
+  public AVIWriter() { super("Audio Video Interleave", "avi"); }
+  public BaseTiffReader(String name, String suffix) { super(name, suffix); }
+  public CacheException(String s, Throwable cause) { super(s, cause); }
+  public CacheException(Throwable cause) { super(cause); }
+  public CoreMetadataList(int size1, int size2) { super(size1, size2); }
+  public FormatException(String s, Throwable cause) { super(s, cause); }
+  public FormatException(Throwable cause) { super(cause); }
+  public FormatReader(String format, String suffix) { super(format, suffix); }
+  public FormatWriter(String format, String suffix) { super(format, suffix); }
+  public JavaWriter() { super("Java source code", "java"); }
+  public MissingLibraryException(String s, Throwable cause) { super(s, cause); }
+  public MissingLibraryException(Throwable cause) { super(cause); }
+  public SubResolutionFormatReader(String format, String suffix) { super(format, suffix); }
+  public UnknownFormatException(String s, Throwable cause) { super(s, cause); }
+  public UnknownFormatException(Throwable cause) { super(cause); }
+  public UnsupportedCompressionException(Throwable cause) { super(cause); }
+  public static final String SKIP_MISSING_WELLS = "scanr.skip_missing_wells";
+  public static final String XML_NAME = "_meta.xml";
+  public static final String[] COMPANION_SUFFIXES = {"xml", "txt"};
+  public static final String[] COMPRESSION_SUFFIXES = {"bz2", "gz"};
+  public static final String[] FV1000_SUFFIXES = {"oib", "oif"};
+  public static final String[] PRAIRIE_SUFFIXES = {"cfg", "env", "xml"};
+  public static final String[] TIFF_SUFFIXES = {"tif", "xml"};
+  public static final boolean SKIP_MISSING_WELLS_DEFAULT = true;
+  public static final int IMAGEJ_TAG = 50839;
+  }  

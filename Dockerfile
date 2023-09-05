@@ -10,6 +10,7 @@ RUN apt-get -q install -y libvips libvips-dev
 ### Install BioFormats wrapper
 
 WORKDIR /root/src/BFBridge/python
+RUN pip install -r requirements.txt --break-system-packages
 RUN python3 compile_bfbridge.py
 
 ### Set up the server

@@ -92,7 +92,7 @@ def construct_reader(imagepath):
 
 
 from pydicom import dcmread
-import base64
+import hashlib
 dicom_extensions = set(["dcm", "dic", "dicom"])
 
 # For file formats where multiple files are opened together,
@@ -105,23 +105,9 @@ def suggest_folder_name(filepath, extension):
             series_instance_uid = ds[0x0020,0x000E].repval
             #uid = study_instance_uid + ".." + series_instance_uid
             uid = series_instance_uid
-            summary = 0
-
-            for c in uid:
-                if c == '.':
-                    c = 10
-                else:
-                    c = int(c)
-                summary *= 11
-                summary += c
-
-            # make it a byte array
-            summary = hex(summary)[2:]
-            if len(summary) % 2 == 1:
-                summary = '0' + summary
-            summary = bytes.fromhex(summary)
-            summary = base64.urlsafe_b64encode(summary).decode("ascii").replace("=", "")
-            return summary
+            s = hashlib.md5()
+            s.update(uid.encode('ascii'))
+            return s.hexdigest()[:10]
         return ""
     except:
         return ""

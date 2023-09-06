@@ -89,3 +89,39 @@ def construct_reader(imagepath):
     if reader is None:
         raise RuntimeError({"type": ",".join(reader_names), "error": ", ".join(errors)})
     return reader
+
+
+from pydicom import dcmread
+import base64
+dicom_extensions = set(["dcm", "dic", "dicom"])
+
+# For file formats where multiple files are opened together,
+# we should move them to a directory. This function infers a common name.
+def suggest_folder_name(filepath, extension):
+    try:
+        if extension in dicom_extensions:
+            ds = dcmread(filepath)
+            #study_instance_uid = ds[0x0020,0x000D].repval
+            series_instance_uid = ds[0x0020,0x000E].repval
+            #uid = study_instance_uid + ".." + series_instance_uid
+            uid = series_instance_uid
+            summary = 0
+
+            for c in uid:
+                if c == '.':
+                    c = 10
+                else:
+                    c = int(c)
+                summary *= 11
+                summary += c
+
+            # make it a byte array
+            summary = hex(summary)[2:]
+            if len(summary) % 2 == 1:
+                summary = '0' + summary
+            summary = bytes.fromhex(summary)
+            summary = base64.urlsafe_b64encode(summary).decode("ascii").replace("=", "")
+            return summary
+        return ""
+    except:
+        return ""

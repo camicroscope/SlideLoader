@@ -27,7 +27,7 @@ def getMetadata(filepath, extended, raise_exception):
         if raise_exception:
             raise e
         # here, e has attribute "error"
-        return str(e)
+        return e.args[0]
 
     try:
         metadata = slide.get_basic_metadata(extended)

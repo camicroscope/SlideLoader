@@ -191,7 +191,7 @@ def finish_upload(token):
             shutil.move(tmppath, filepath)
             return flask.Response(json.dumps({"ended": token, "filepath": filepath, "filename": filename, "relpath": relpath}), status=200, mimetype='text/json')
         else:
-            return flask.Response(json.dumps({"error": "File with name '" + filename + "' already exists", "filepath": filepath, "filename": filename}), status=400, mimetype='text/json')
+            return flask.Response(json.dumps({"error": "File with name '" + filename + "' already exists", "filename": filename}), status=400, mimetype='text/json')
     else:
         return flask.Response(json.dumps({"error": "Invalid filename"}), status=400, mimetype='text/json')
 

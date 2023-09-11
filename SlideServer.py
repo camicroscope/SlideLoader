@@ -13,7 +13,7 @@ import urllib
 import flask
 import flask_cors
 from flask import request
-from image_reader import construct_reader
+from image_reader import construct_reader, suggest_folder_name
 from werkzeug.utils import secure_filename
 import dev_utils
 import requests
@@ -64,9 +64,28 @@ def secure_filename_strict(filename):
         split_filename = ["noname", split_filename[-1]]
     return '.'.join(split_filename)
 
-def allowed_file(filename):
+def verify_extension(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def secure_relative_path(filename):
+    if filename[0] == os.sep:
+        raise ValueError("Filepath starts from the root directory which is forbidden")
+    if os.sep + os.sep in filename:
+        raise ValueError("Filepath contains '//' which is forbidden")
+    if os.sep + '.' + os.sep in filename:
+        raise ValueError("Filepath contains '/./' which is forbidden")
+    if ".." in filename:
+        raise ValueError("Filepath contains '..' which is forbidden")
+    level_names = filename.split(os.sep)
+    filename = ""
+    for name in level_names:
+        name = secure_filename(name)
+        if len(name) == 0:
+            name = "noname"
+        filename += name
+        filename += os.sep
+    return filename[:-1]
 
 
 def getThumbnail(filename, size=50):
@@ -155,20 +174,26 @@ def finish_upload(token):
     if not body:
         return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400, mimetype='text/json')
     token = secure_filename(token)
+    tmppath = os.path.join(app.config['TEMP_FOLDER'], token)
+    if not os.path.isfile(tmppath):
+        return flask.Response(json.dumps({"error": "Token Not Recognised"}), status=400, mimetype='text/json')
     filename = body['filename']
-    if filename and allowed_file(filename):
+    if filename and verify_extension(filename):
         filename = secure_filename_strict(filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        tmppath = os.path.join(app.config['TEMP_FOLDER'], token)
-        if not os.path.isfile(filepath):
-            if os.path.isfile(tmppath):
-                shutil.move(tmppath, filepath)
-                return flask.Response(json.dumps({"ended": token, "filepath": filepath}), status=200, mimetype='text/json')
-            else:
-                return flask.Response(json.dumps({"error": "Token Not Recognised"}), status=400, mimetype='text/json')
+        foldername = suggest_folder_name(tmppath, filename.rsplit('.', 1)[1])
+        if foldername != "":
+            folderpath = os.path.join(app.config['UPLOAD_FOLDER'], foldername)
+            if not os.path.isdir(folderpath):
+                os.mkdir(folderpath)
+            relpath = os.path.join(foldername, filename)
         else:
-            return flask.Response(json.dumps({"error": "File with name '" + filename + "' already exists", "filepath": filepath}), status=400, mimetype='text/json')
-
+            relpath = filename
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], relpath)
+        if not os.path.isfile(filepath):
+            shutil.move(tmppath, filepath)
+            return flask.Response(json.dumps({"ended": token, "filepath": filepath, "filename": filename, "relpath": relpath}), status=200, mimetype='text/json')
+        else:
+            return flask.Response(json.dumps({"error": "File with name '" + filename + "' already exists", "filename": filename}), status=400, mimetype='text/json')
     else:
         return flask.Response(json.dumps({"error": "Invalid filename"}), status=400, mimetype='text/json')
 
@@ -185,8 +210,8 @@ def slide_delete():
         return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400, mimetype='text/json')
         
     filename = body['filename']
-    if filename and allowed_file(filename):
-        filename = secure_filename(filename)
+    if filename and verify_extension(filename):
+        filename = secure_relative_path(filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         if os.path.isfile(filepath):
             os.remove(os.path.join(app.config['UPLOAD_FOLDER'], filename))
@@ -205,18 +230,21 @@ def testRoute():
     return '{"Status":"up"}'
 
 
-@app.route("/data/one/<filepath>", methods=['GET'])
+@app.route("/data/one/<path:filepath>", methods=['GET'])
 def singleSlide(filepath):
+    filepath = secure_relative_path(filepath)
     extended = request.args.get('extended')
     res = dev_utils.getMetadata(os.path.join(app.config['UPLOAD_FOLDER'], filepath), extended, False)
+    res["filepath"] = filepath
     if (hasattr(res, 'error')):
         return flask.Response(json.dumps(res), status=500, mimetype='text/json')
     else:
         return flask.Response(json.dumps(res), status=200, mimetype='text/json')
 
 
-@app.route("/data/thumbnail/<filepath>", methods=['GET'])
+@app.route("/data/thumbnail/<path:filepath>", methods=['GET'])
 def singleThumb(filepath):
+    filepath = secure_relative_path(filepath)
     size = flask.request.args.get('size', default=50, type=int)
     size = min(500, size)
     res = getThumbnail(filepath, size)
@@ -230,18 +258,29 @@ def singleThumb(filepath):
 def multiSlide(filepathlist):
     extended = request.args.get('extended')
     filenames = json.loads(filepathlist)
-    paths = [os.path.join(app.config['UPLOAD_FOLDER'], filename) for filename in filenames]
-    res = dev_utils.getMetadataList(paths, extended, False)
+    paths = [secure_relative_path(filename) for filename in filenames]
+    absolute_paths = [os.path.join(app.config['UPLOAD_FOLDER'], path) for path in paths]
+    res = dev_utils.getMetadataList(absolute_paths, extended, False)
+    for i in range(len(absolute_paths)):
+        res[i]["filepath"] = paths[i]
     if (hasattr(res, 'error')):
         return flask.Response(json.dumps(res), status=500, mimetype='text/json')
     else:
         return flask.Response(json.dumps(res), status=200, mimetype='text/json')
 
 
-@app.route("/getSlide/<image_name>")
+@app.route("/getSlide/<path:image_name>")
 def getSlide(image_name):
-    if(os.path.isfile("/images/"+image_name)):
-        return flask.send_from_directory(app.config["UPLOAD_FOLDER"], image_name, as_attachment=True)
+    image_name = secure_relative_path(image_name)
+    if not verify_extension(image_name):
+        return flask.Response(json.dumps({"error": "Bad image type requested"}), status=400, mimetype='text/json')
+    folder = app.config['UPLOAD_FOLDER']
+    if os.sep in image_name:
+        folder_and_file = image_name.rsplit(os.sep, 1)
+        folder = os.path.join(folder, folder_and_file[0])
+        image_name = folder_and_file[1]
+    if(os.path.isfile(os.path.join(folder, image_name))):
+        return flask.send_from_directory(folder, image_name, as_attachment=True)
     else:
         return flask.Response(json.dumps({"error": "File does not exist"}), status=404, mimetype='text/json')
 

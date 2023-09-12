@@ -22,7 +22,7 @@ import zipfile
 import csv 
 import pathlib
 import logging
-from gDriveDownload import start, afterUrlAuth, callApi
+from gdrive_utils import getFileFromGdrive, gDriveGetFile, checkDownloadStatus
 from threading import Thread
 
 try:
@@ -48,7 +48,7 @@ app.config['SECRET_KEY'] = os.urandom(24)
 app.config['ROI_FOLDER'] = "/images/roiDownload"
 
 
-ALLOWED_EXTENSIONS = set(['svs', 'tif', 'tiff', 'vms', 'vmu', 'ndpi', 'scn', 'mrxs', 'bif', 'svslide', 'png', 'jpg'])    
+ALLOWED_EXTENSIONS = set(['svs', 'tif', 'tiff', 'vms', 'vmu', 'ndpi', 'scn', 'mrxs', 'bif', 'svslide', 'png', 'jpg'])
 
 
 def allowed_file(filename):
@@ -570,37 +570,16 @@ class getFileFromGdrive(Thread):
 
 # Route to start the OAuth Server(to listen if user is Authenticated) and start the file Download after Authentication
 @app.route('/googleDriveUpload/getFile', methods=['POST'])
-def gDriveGetFile():
+def gDriveGetFileRoute():
     body = flask.request.get_json()
     if not body:
         return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
-
-    token = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
-    token = secure_filename(token)
-    tmppath = os.path.join("/images/uploading/", token)
-    # regenerate if we happen to collide
-    while os.path.isfile(tmppath):
-        token = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
-        token = secure_filename(token)
-        tmppath = os.path.join("/images/uploading/", token)
-
-    try:
-        params = start(body['userId'])
-    except:
-        return flask.Response(json.dumps({'error': str(sys.exc_info()[0])}), status=400)
-    thread_a = getFileFromGdrive(params, body['userId'], body['fileId'], token)
-    thread_a.start()
-    return flask.Response(json.dumps({"authURL": params["auth_url"], "token": token}), status=200)
+    return gDriveGetFile(body)
 
 # To check if a particular file is downloaded from Gdrive
 @app.route('/googleDriveUpload/checkStatus', methods=['POST'])
-def checkDownloadStatus():
+def checkDownloadStatusRoute():
     body = flask.request.get_json()
     if not body:
         return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
-    token = body['token']
-    path = app.config['TEMP_FOLDER']+'/'+token
-    if os.path.isfile(path):
-        return flask.Response(json.dumps({"downloadDone": True}), status=200)
-    return flask.Response(json.dumps({"downloadDone": False}), status=200)
-
+    return checkDownloadStatus(body)

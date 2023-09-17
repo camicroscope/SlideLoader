@@ -77,6 +77,8 @@ def secure_relative_path(filename):
         raise ValueError("Filepath contains '/./' which is forbidden")
     if ".." in filename:
         raise ValueError("Filepath contains '..' which is forbidden")
+    if filename[0] == '.':
+        raise ValueError("Filepath starts with '.' (or is '.') which is forbidden")
     level_names = filename.split(os.sep)
     filename = ""
     for name in level_names:
@@ -193,7 +195,9 @@ def finish_upload(token):
             shutil.move(tmppath, filepath)
             return flask.Response(json.dumps({"ended": token, "filepath": filepath, "filename": filename, "relpath": relpath}), status=200, mimetype='text/json')
         else:
-            return flask.Response(json.dumps({"error": "File with name '" + filename + "' already exists", "filename": filename}), status=400, mimetype='text/json')
+            return flask.Response(json.dumps({"error": "File with name '" + filename + "' already exists", "filepath": filepath, "filename": filename}), status=400, mimetype='text/json')
+        # The above return "filename" to show the user the sanitized filename
+        # and on success, return relpath for subsequent SlideLoader calls by the frontend.
     else:
         return flask.Response(json.dumps({"error": "Invalid filename"}), status=400, mimetype='text/json')
 
@@ -268,6 +272,24 @@ def multiSlide(filepathlist):
     else:
         return flask.Response(json.dumps(res), status=200, mimetype='text/json')
 
+# Used by Caracal; may be removed after our schema fully supports multifile formats in a subdir
+@app.route("/data/folder/<path:relpath>", methods=['GET'])
+def listFolderContents(relpath):
+    res = {}
+    try:
+        relpath = secure_relative_path(relpath)
+        absolutepath = os.path.join(app.config['UPLOAD_FOLDER'], relpath)
+    except BaseException as e:
+        res['error'] = "bad folderpath: " + str(e)
+        return flask.Response(json.dumps(res), status=400, mimetype='text/json')
+
+    try:
+        res['contents'] = os.listdir(absolutepath)
+        res['contents'] = [filename for filename in res['contents'] if not filename.startswith('.')]
+        return flask.Response(json.dumps(res), status=200, mimetype='text/json')
+    except:
+        res['contents'] = []
+        return flask.Response(json.dumps(res), status=200, mimetype='text/json')
 
 @app.route("/getSlide/<path:image_name>")
 def getSlide(image_name):
@@ -668,3 +690,31 @@ def checkDownloadStatus():
         return flask.Response(json.dumps({"downloadDone": True}), status=200, mimetype='text/json')
     return flask.Response(json.dumps({"downloadDone": False}), status=200, mimetype='text/json')
 
+# DICOM Explorer UI and DICOM server hostname and port
+@app.route('/dicomsrv/location', methods=['GET'])
+def guiLocation():
+    port = os.getenv("DICOM_PORT")
+    hostname = os.getenv("DICOM_HOSTNAME")
+    ui_port = os.getenv("DICOM_UI_PORT")
+    ui_hostname = os.getenv("DICOM_UI_HOSTNAME")
+    res = {}
+    if port is not None:
+        res["port"] = int(port)
+    else:
+        print("DICOM_PORT env variable not found")
+
+    if ui_port is not None:
+        res["ui_port"] = int(ui_port)
+    else:
+        print("DICOM_UI_PORT env variable not found")
+
+
+    # If the DICOM server is on a different computer, this can be uncommented,
+    # the frontend will parse this, but it's better to keep this in a comment against env var poisoning
+    # if hostname is not None:
+    #     res["hostname"] = hostname
+    # if ui_hostname is not None:
+    #     res["ui_hostname"] = ui_hostname
+
+    success = "port" in res and "ui_port" in res
+    return flask.Response(json.dumps(res), status=200 if success else 500, mimetype='text/json')

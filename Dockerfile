@@ -15,6 +15,7 @@ RUN pip install gunicorn[eventlet]
 run openssl version -a
 
 ENV FLASK_ENV development
+ENV BFBRIDGE_LOGLEVEL=WARN
 
 RUN mkdir -p /images/uploading
 

@@ -114,7 +114,7 @@ def makePyramid(filename, dest):
     try:
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         destpath = os.path.join(app.config['UPLOAD_FOLDER'], dest)
-        savedImg = pyvips.Image.new_from_file(filepath, access='sequential').tiffsave(destpath, tile=True, compression="lzw", tile_width=256, tile_height=256, pyramid=True, bigtiff=True, xres=0.254, yres=0.254)
+        savedImg = pyvips.Image.new_from_file(filepath, access='sequential').tiffsave(destpath, tile=True, compression="lzw", tile_width=256, tile_height=256, pyramid=True, bigtiff=True)
         while not os.path.exists(filepath):
             os.sync()
             sleep(750)

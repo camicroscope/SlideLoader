@@ -1,11 +1,11 @@
 import csv
-import subprocess
+import os
 import time
 from multiprocessing.pool import ThreadPool
 
-import openslide
+from image_reader import construct_reader
 
-from dev_utils import file_md5
+from dev_utils import getMetadata
 from dev_utils import postslide
 from dev_utils import post_url
 
@@ -34,19 +34,14 @@ def gen_thumbnail(filename, slide, size, imgtype="png"):
 
 
 def openslidedata(metadata):
-    slide = openslide.OpenSlide(metadata['location'])
-    slideData = slide.properties
-    metadata['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_X, None)
-    metadata['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_Y, None)
-    metadata['mpp'] = metadata['mpp-x'] or metadata['mpp-x'] or None
-    # metadata['height'] = slideData.get("openslide.level[0].height", None)
-    # metadata['width'] = slideData.get("openslide.level[0].width", None)
-    metadata['height'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_HEIGHT, None)
-    metadata['width'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_WIDTH, None)
-    metadata['vendor'] = slideData.get(openslide.PROPERTY_NAME_VENDOR, None)
-    metadata['level_count'] = int(slideData.get('level_count', 1))
-    metadata['objective'] = float(slideData.get("aperio.AppMag", 0.0))
-    metadata['md5sum'] = file_md5(metadata['location'])
+    if not os.path.isfile(metadata['location']):
+        raise IOError("No such file")
+
+    slide = construct_reader(metadata['location'])
+    metadata_retrieved = slide.get_basic_metadata(False)
+    for k, v in metadata_retrieved.items():
+        if k not in metadata:
+            metadata[k] = v
     metadata['timestamp'] = time.time()
     thumbnail_size = config.get('thumbnail_size', None)
     if thumbnail_size:

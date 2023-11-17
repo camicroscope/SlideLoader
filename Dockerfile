@@ -1,36 +1,47 @@
-FROM python:3
+FROM camicroscope/image-decoders:latest
 
 WORKDIR /var/www
 RUN apt-get update
 RUN apt-get -q update --fix-missing
-RUN apt-get -q install -y openslide-tools python3-openslide vim openssl
+RUN apt-get -q install -y python3-pip openslide-tools python3-openslide vim openssl
+RUN apt-get -q install -y openssl libcurl4-openssl-dev libssl-dev
 RUN apt-get -q install -y libvips libvips-dev
 
-RUN pip install pyvips
-RUN pip install flask
-RUN pip install gunicorn
-RUN pip install greenlet
-RUN pip install gunicorn[eventlet]
+### Install BioFormats wrapper
+
+WORKDIR /root/src/BFBridge/python
+RUN pip install -r requirements.txt --break-system-packages
+RUN python3 compile_bfbridge.py
+
+### Set up the server
+
+WORKDIR /root/src/
+
+RUN pip install pyvips --break-system-packages
+RUN pip install flask --break-system-packages
+RUN pip install gunicorn --break-system-packages
+RUN pip install greenlet --break-system-packages
+RUN pip install gunicorn[eventlet] --break-system-package
 
 run openssl version -a
 
-ENV FLASK_ENV development
+ENV FLASK_DEBUG True
+ENV BFBRIDGE_LOGLEVEL=WARN
 
 RUN mkdir -p /images/uploading
 
+COPY requirements.txt .
+RUN pip3 install -r requirements.txt --break-system-packages
+
 COPY ./ ./
-
 RUN cp test_imgs/* /images/
-
-RUN pip3 install -r requirements.txt
-
 
 EXPOSE 4000
 EXPOSE 4001
 
 #debug/dev only
 # ENV FLASK_APP SlideServer.py
-# CMD python -m flask run --host=0.0.0.0 --port=4000
+# CMD python3 -m flask run --host=0.0.0.0 --port=4000
 
 # The Below BROKE the ability for users to upload images.
 # # non-root user

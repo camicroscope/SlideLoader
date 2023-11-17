@@ -6,15 +6,14 @@ import shutil
 import string
 import sys
 import pyvips
-from os import listdir
-from os.path import isfile, join
+import os
 from spritemaker import createSpritesheet
 from PIL import Image
 import urllib
 import flask
 import flask_cors
 from flask import request
-import openslide
+from image_reader import construct_reader, suggest_folder_name
 from werkzeug.utils import secure_filename
 import dev_utils
 import requests
@@ -24,6 +23,8 @@ import pathlib
 import logging
 from gdrive_utils import getFileFromGdrive, gDriveGetFile, checkDownloadStatus
 from threading import Thread
+from file_extensions import ALLOWED_EXTENSIONS
+from time import sleep
 
 try:
     from io import BytesIO
@@ -47,13 +48,44 @@ app.config['TOKEN_SIZE'] = 10
 app.config['SECRET_KEY'] = os.urandom(24)
 app.config['ROI_FOLDER'] = "/images/roiDownload"
 
+# should be used instead of secure_filename to create new files whose extensions are important.
+# use secure_filename to access previous files.
+# secure_filename ensures security but may result in invalid filenames.
+# secure_filename should be used to access, because users of caMicroscope
+# might have already uploaded what caMicroscope cannot read,
+# and allow reading those.
+def secure_filename_strict(filename):
+    split_filename = secure_filename(filename).rsplit('.', 1)
+    split_filename[-1] = split_filename[-1].lower() # .SvS, .Svs, ... shouldn't be allowed
+    if len(split_filename) < 2:
+        # for example, #.svs -> .svs -> svs, which removes the extension
+        split_filename = ["noname", split_filename[-1]]
+    return '.'.join(split_filename)
 
-ALLOWED_EXTENSIONS = set(['svs', 'tif', 'tiff', 'vms', 'vmu', 'ndpi', 'scn', 'mrxs', 'bif', 'svslide', 'png', 'jpg'])
-
-
-def allowed_file(filename):
+def verify_extension(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def secure_relative_path(filename):
+    if filename[0] == os.sep:
+        raise ValueError("Filepath starts from the root directory which is forbidden")
+    if os.sep + os.sep in filename:
+        raise ValueError("Filepath contains '//' which is forbidden")
+    if os.sep + '.' + os.sep in filename:
+        raise ValueError("Filepath contains '/./' which is forbidden")
+    if ".." in filename:
+        raise ValueError("Filepath contains '..' which is forbidden")
+    if filename[0] == '.':
+        raise ValueError("Filepath starts with '.' (or is '.') which is forbidden")
+    level_names = filename.split(os.sep)
+    filename = ""
+    for name in level_names:
+        name = secure_filename(name)
+        if len(name) == 0:
+            name = "noname"
+        filename += name
+        filename += os.sep
+    return filename[:-1]
 
 
 def getThumbnail(filename, size=50):
@@ -61,27 +93,32 @@ def getThumbnail(filename, size=50):
     if not os.path.isfile(filepath):
         return {"error": "No such file"}
     try:
-        slide = openslide.OpenSlide(filepath)
+        slide = construct_reader(filepath)
+    except BaseException as e:
+        # here, e has attribute "error"
+        return e
+
+    try:
         thumb = slide.get_thumbnail((size, size))
         buffer = BytesIO()
         thumb.save(buffer, format="PNG")
         data = 'data:image/png;base64,' + str(base64.b64encode(buffer.getvalue()))[2:-1]
         return {"slide": data, "size": size}
     except BaseException as e:
-        return {"type": "Openslide", "error": str(e)}
+        return {"type": slide.reader_name(), "error": str(e)}
 
 @app.route('/slide/<filename>/pyramid/<dest>', methods=['POST'])
 def makePyramid(filename, dest):
     try:
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         destpath = os.path.join(app.config['UPLOAD_FOLDER'], dest)
-        savedImg = pyvips.Image.new_from_file(filepath, access='sequential').tiffsave(destpath, tile=True, compression="lzw", tile_width=256, tile_height=256, pyramid=True, bigtiff=True, xres=0.254, yres=0.254)
+        savedImg = pyvips.Image.new_from_file(filepath, access='sequential').tiffsave(destpath, tile=True, compression="lzw", tile_width=256, tile_height=256, pyramid=True, bigtiff=True)
         while not os.path.exists(filepath):
             os.sync()
             sleep(750)
-        return flask.Response(json.dumps({"status": "OK", "srcFile":filename, "destFile":dest, "details":savedImg}), status=200)
+        return flask.Response(json.dumps({"status": "OK", "srcFile":filename, "destFile":dest, "details":savedImg}), status=200, mimetype='text/json')
     except BaseException as e:
-        return flask.Response(json.dumps({"type": "pyvips", "error": str(e)}), status=500)
+        return flask.Response(json.dumps({"type": "pyvips", "error": str(e)}), status=500, mimetype='text/json')
 
 
 # routes
@@ -99,7 +136,11 @@ def start_upload():
         tmppath = os.path.join(app.config['TEMP_FOLDER'], token)
     f = open(tmppath, 'a')
     f.close()
-    return flask.Response(json.dumps({"upload_token": token}), status=200)
+    res_body = {"upload_token": token}
+    body = flask.request.get_json()
+    if body and body.get('filename'):
+        res_body['filename'] = secure_filename_strict(body['filename'])
+    return flask.Response(json.dumps(res_body), status=200, mimetype='text/json')
 
 
 # using the token from the start upload endpoint, post data given offset.
@@ -111,19 +152,19 @@ def continue_file(token):
     if os.path.isfile(tmppath):
         body = flask.request.get_json()
         if not body:
-            return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
+            return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400, mimetype='text/json')
         offset = body['offset'] or 0
         if not 'data' in body:
-            return flask.Response(json.dumps({"error": "File data not found in body"}), status=400)
+            return flask.Response(json.dumps({"error": "File data not found in body"}), status=400, mimetype='text/json')
         else:
             data = base64.b64decode(body['data'])
             f = open(tmppath, "ab")
             f.seek(int(offset))
             f.write(data)
             f.close()
-            return flask.Response(json.dumps({"status": "OK"}), status=200)
+            return flask.Response(json.dumps({"status": "OK"}), status=200, mimetype='text/json')
     else:
-        return flask.Response(json.dumps({"error": "Token Not Recognised"}), status=400)
+        return flask.Response(json.dumps({"error": "Token Not Recognised"}), status=400, mimetype='text/json')
 
 
 # end the upload, by removing the in progress indication; locks further modification
@@ -131,24 +172,32 @@ def continue_file(token):
 def finish_upload(token):
     body = flask.request.get_json()
     if not body:
-        return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
+        return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400, mimetype='text/json')
     token = secure_filename(token)
+    tmppath = os.path.join(app.config['TEMP_FOLDER'], token)
+    if not os.path.isfile(tmppath):
+        return flask.Response(json.dumps({"error": "Token Not Recognised"}), status=400, mimetype='text/json')
     filename = body['filename']
-    if filename and allowed_file(filename):
-        filename = secure_filename(filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        tmppath = os.path.join(app.config['TEMP_FOLDER'], token)
-        if not os.path.isfile(filepath):
-            if os.path.isfile(tmppath):
-                shutil.move(tmppath, filepath)
-                return flask.Response(json.dumps({"ended": token, "filepath": filepath}))
-            else:
-                return flask.Response(json.dumps({"error": "Token Not Recognised"}), status=400)
+    if filename and verify_extension(filename):
+        filename = secure_filename_strict(filename)
+        foldername = suggest_folder_name(tmppath, filename.rsplit('.', 1)[1])
+        if foldername != "":
+            folderpath = os.path.join(app.config['UPLOAD_FOLDER'], foldername)
+            if not os.path.isdir(folderpath):
+                os.mkdir(folderpath)
+            relpath = os.path.join(foldername, filename)
         else:
-            return flask.Response(json.dumps({"error": "File with name '" + filename + "' already exists"}), status=400)
-
+            relpath = filename
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], relpath)
+        if not os.path.isfile(filepath):
+            shutil.move(tmppath, filepath)
+            return flask.Response(json.dumps({"ended": token, "filepath": filepath, "filename": filename, "relpath": relpath}), status=200, mimetype='text/json')
+        else:
+            return flask.Response(json.dumps({"error": "File with name '" + filename + "' already exists", "filepath": filepath, "filename": filename}), status=400, mimetype='text/json')
+        # The above return "filename" to show the user the sanitized filename
+        # and on success, return relpath for subsequent SlideLoader calls by the frontend.
     else:
-        return flask.Response(json.dumps({"error": "Invalid filename"}), status=400)
+        return flask.Response(json.dumps({"error": "Invalid filename"}), status=400, mimetype='text/json')
 
     # check for token
     # get info associated with token
@@ -160,20 +209,20 @@ def slide_delete():
     body = flask.request.get_json()
 
     if not body:
-        return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
+        return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400, mimetype='text/json')
         
     filename = body['filename']
-    if filename and allowed_file(filename):
-        filename = secure_filename(filename)
+    if filename and verify_extension(filename):
+        filename = secure_relative_path(filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         if os.path.isfile(filepath):
             os.remove(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            return flask.Response(json.dumps({"deleted": filename, "success": True})) 
+            return flask.Response(json.dumps({"deleted": filename, "success": True}), mimetype='text/json') 
         else:
-            return flask.Response(json.dumps({"error": "File with name '" + filename + "' does not exist"}), status=400)
+            return flask.Response(json.dumps({"error": "File with name '" + filename + "' does not exist"}), status=400, mimetype='text/json')
 
     else:
-        return flask.Response(json.dumps({"error": "Invalid filename"}), status=400)
+        return flask.Response(json.dumps({"error": "Invalid filename"}), status=400, mimetype='text/json')
 
     # check for file if it exists or not
     # delete the file
@@ -183,42 +232,77 @@ def testRoute():
     return '{"Status":"up"}'
 
 
-@app.route("/data/one/<filepath>", methods=['GET'])
+@app.route("/data/one/<path:filepath>", methods=['GET'])
 def singleSlide(filepath):
+    filepath = secure_relative_path(filepath)
     extended = request.args.get('extended')
-    res = dev_utils.getMetadata(filepath, app.config['UPLOAD_FOLDER'], extended)
+    res = dev_utils.getMetadata(os.path.join(app.config['UPLOAD_FOLDER'], filepath), extended, False)
+    res["filepath"] = filepath
     if (hasattr(res, 'error')):
-        return flask.Response(json.dumps(res), status=500)
+        return flask.Response(json.dumps(res), status=500, mimetype='text/json')
     else:
-        return flask.Response(json.dumps(res), status=200)
+        return flask.Response(json.dumps(res), status=200, mimetype='text/json')
 
 
-@app.route("/data/thumbnail/<filepath>", methods=['GET'])
+@app.route("/data/thumbnail/<path:filepath>", methods=['GET'])
 def singleThumb(filepath):
+    filepath = secure_relative_path(filepath)
     size = flask.request.args.get('size', default=50, type=int)
+    size = min(500, size)
     res = getThumbnail(filepath, size)
     if (hasattr(res, 'error')):
-        return flask.Response(json.dumps(res), status=500)
+        return flask.Response(json.dumps(res), status=500, mimetype='text/json')
     else:
-        return flask.Response(json.dumps(res), status=200)
+        return flask.Response(json.dumps(res), status=200, mimetype='text/json')
 
 
 @app.route("/data/many/<filepathlist>", methods=['GET'])
 def multiSlide(filepathlist):
-    request.args.get('extended')
-    res = dev_utils.getMetadataList(json.loads(filepathlist), app.config['UPLOAD_FOLDER'], extended)
+    extended = request.args.get('extended')
+    filenames = json.loads(filepathlist)
+    paths = [secure_relative_path(filename) for filename in filenames]
+    absolute_paths = [os.path.join(app.config['UPLOAD_FOLDER'], path) for path in paths]
+    res = dev_utils.getMetadataList(absolute_paths, extended, False)
+    for i in range(len(absolute_paths)):
+        res[i]["filepath"] = paths[i]
     if (hasattr(res, 'error')):
-        return flask.Response(json.dumps(res), status=500)
+        return flask.Response(json.dumps(res), status=500, mimetype='text/json')
     else:
-        return flask.Response(json.dumps(res), status=200)
+        return flask.Response(json.dumps(res), status=200, mimetype='text/json')
 
+# Used by Caracal; may be removed after our schema fully supports multifile formats in a subdir
+@app.route("/data/folder/<path:relpath>", methods=['GET'])
+def listFolderContents(relpath):
+    res = {}
+    try:
+        relpath = secure_relative_path(relpath)
+        absolutepath = os.path.join(app.config['UPLOAD_FOLDER'], relpath)
+    except BaseException as e:
+        res['error'] = "bad folderpath: " + str(e)
+        return flask.Response(json.dumps(res), status=400, mimetype='text/json')
 
-@app.route("/getSlide/<image_name>")
+    try:
+        res['contents'] = os.listdir(absolutepath)
+        res['contents'] = [filename for filename in res['contents'] if not filename.startswith('.')]
+        return flask.Response(json.dumps(res), status=200, mimetype='text/json')
+    except:
+        res['contents'] = []
+        return flask.Response(json.dumps(res), status=200, mimetype='text/json')
+
+@app.route("/getSlide/<path:image_name>")
 def getSlide(image_name):
-    if(os.path.isfile("/images/"+image_name)):
-        return flask.send_from_directory(app.config["UPLOAD_FOLDER"], filename=image_name, as_attachment=True)
+    image_name = secure_relative_path(image_name)
+    if not verify_extension(image_name):
+        return flask.Response(json.dumps({"error": "Bad image type requested"}), status=400, mimetype='text/json')
+    folder = app.config['UPLOAD_FOLDER']
+    if os.sep in image_name:
+        folder_and_file = image_name.rsplit(os.sep, 1)
+        folder = os.path.join(folder, folder_and_file[0])
+        image_name = folder_and_file[1]
+    if(os.path.isfile(os.path.join(folder, image_name))):
+        return flask.send_from_directory(folder, image_name, as_attachment=True)
     else:
-        return flask.Response(json.dumps({"error": "File does not exist"}), status=404)
+        return flask.Response(json.dumps({"error": "File does not exist"}), status=404, mimetype='text/json')
 
 # using the token from the start url upload endpoint
 @app.route('/urlupload/continue/<token>', methods=['POST'])
@@ -228,19 +312,19 @@ def continue_urlfile(token):
     if os.path.isfile(tmppath):
         body = flask.request.get_json()
         if not body:
-            return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
+            return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400, mimetype='text/json')
         if not 'url' in body:
-            return flask.Response(json.dumps({"error": "File url not present in body"}), status=400)
+            return flask.Response(json.dumps({"error": "File url not present in body"}), status=400, mimetype='text/json')
         else:
             url = body['url']
             try:
                 url = urllib.parse.unquote(url)
                 urllib.request.urlretrieve(url, tmppath)
-                return flask.Response(json.dumps({"status": "OK Uploaded"}), status=200)
+                return flask.Response(json.dumps({"status": "OK Uploaded"}), status=200, mimetype='text/json')
             except:
-                return flask.Response(json.dumps({"error": "URL invalid"}), status=400)
+                return flask.Response(json.dumps({"error": "URL invalid"}), status=400, mimetype='text/json')
     else:
-        return flask.Response(json.dumps({"error": "Token Not Recognised"}), status=400)
+        return flask.Response(json.dumps({"error": "Token Not Recognised"}), status=400, mimetype='text/json')
 
 # Route to check if the URL file has completely uploaded to the server 
 # Query Params: 'url', 'token'
@@ -253,9 +337,9 @@ def urlUploadStatus():
     urlFileSize = int(info.headers['Content-Length'])
     fileSize = os.path.getsize(app.config['TEMP_FOLDER']+'/'+token)
     if(fileSize >= urlFileSize):
-        return flask.Response(json.dumps({"uploaded": "True"}), status=200)
+        return flask.Response(json.dumps({"uploaded": "True"}), status=200, mimetype='text/json')
     else:
-        return flask.Response(json.dumps({"uploaded": "False"}), status=200)
+        return flask.Response(json.dumps({"uploaded": "False"}), status=200, mimetype='text/json')
 
 
 
@@ -281,13 +365,13 @@ def getLabelsZips():
         file.close()
         if(zipfile.is_zipfile(tmppath) == False):
             deleteDataset(userFolder)
-            return flask.Response(json.dumps({'error': 'Not a valid zip file/files'}), status=400)
+            return flask.Response(json.dumps({'error': 'Not a valid zip file/files'}), status=400, mimetype='text/json')
         with zipfile.ZipFile(tmppath, 'r') as zip_ref:
             zip_ref.extractall(tmppath[0:-4])
         csvFile = pathlib.Path(tmppath[0:-4]+'/patches.csv')
         if not csvFile.is_file():
             deleteDataset(userFolder)
-            return flask.Response(json.dumps({'error': 'Not a valid labels zip/zips'}), status=400)
+            return flask.Response(json.dumps({'error': 'Not a valid labels zip/zips'}), status=400, mimetype='text/json')
         csvFile = tmppath[0:-4]+'/patches.csv'
         with open(csvFile, 'r') as data1:
             i = 0
@@ -300,7 +384,7 @@ def getLabelsZips():
                         labelsData['counts'][labelsData['labels'].index(
                             line[2])] += 1
                 i += 1
-    return flask.Response(json.dumps(labelsData), status=200)
+    return flask.Response(json.dumps(labelsData), status=200, mimetype='text/json')
 
 
 # Route to receive base64 encoded zip file for custom dataset.
@@ -322,7 +406,7 @@ def getCustomData():
     if(final == 'true'):
         if(zipfile.is_zipfile(path) == False):
             deleteDataset(userFolder)
-            return flask.Response(json.dumps({'error': 'Not a valid zip file/files'}), status=400)
+            return flask.Response(json.dumps({'error': 'Not a valid zip file/files'}), status=400, mimetype='text/json')
         file = zipfile.ZipFile(path, 'r')
         # app.logger.info(file.namelist())
         contents = file.namelist()
@@ -330,10 +414,10 @@ def getCustomData():
         for item in contents:
             if '/' not in item:
                 deleteDataset(userFolder)
-                return flask.Response(json.dumps({'error': 'zip should contain only folders!'}), status=400)
+                return flask.Response(json.dumps({'error': 'zip should contain only folders!'}), status=400, mimetype='text/json')
             if item.endswith('/') == False and item.endswith('.jpg') == False and item.endswith('.jpeg') == False and item.endswith('.png') == False and item.endswith('.tif') == False and item.endswith('.tiff') == False:
                 deleteDataset(userFolder)
-                return flask.Response(json.dumps({'error': 'Dataset zip should have only png/jpg/tif files!'}), status=400)
+                return flask.Response(json.dumps({'error': 'Dataset zip should have only png/jpg/tif files!'}), status=400, mimetype='text/json')
             if item.split('/')[0] not in labelsData['labels']:
                 labelsData['labels'].append(item.split('/')[0])
         for label in labelsData['labels']:
@@ -342,9 +426,9 @@ def getCustomData():
                 if item.startswith(label+'/'):
                     count+=1
             labelsData['counts'].append(count)
-        return flask.Response(json.dumps(labelsData), status=200)
+        return flask.Response(json.dumps(labelsData), status=200, mimetype='text/json')
     else:
-        return flask.Response(json.dumps({'status' : 'pending'}), status=200)
+        return flask.Response(json.dumps({'status' : 'pending'}), status=200, mimetype='text/json')
 
 
 # Route to organise the extracted zip file data according to user sent customized labels and create a spritesheet
@@ -376,7 +460,7 @@ def generateSprite():
                         file = pathlib.Path(path+line[8][1:])
                         if not file.is_file():
                             deleteDataset(userFolder)
-                            return flask.Response(json.dumps({'error': 'Images are missing from one or more zip files'}), status=400)
+                            return flask.Response(json.dumps({'error': 'Images are missing from one or more zip files'}), status=400, mimetype='text/json')
                         file = path+line[8][1:]
                         fileName = ''.join(random.choice(
                             string.ascii_lowercase + string.digits) for _ in range(40))
@@ -387,7 +471,7 @@ def generateSprite():
     try:
         createSpritesheet(app.config['DATASET_FOLDER']+userFolder, selectedLabels, width, height)
     except:
-        return flask.Response(json.dumps({'error': str(sys.exc_info()[0])}), status=400)
+        return flask.Response(json.dumps({'error': str(sys.exc_info()[0])}), status=400, mimetype='text/json')
     with open(app.config['DATASET_FOLDER']+userFolder+'/spritesheet/labelnames.csv', 'w', newline='') as labelsnamesCSVfile:
         writer = csv.writer(labelsnamesCSVfile)
         writer.writerow(selectedLabels)
@@ -401,7 +485,7 @@ def generateSprite():
                  '/spritesheet/labelnames.csv', '/labelnames.csv')
     download_link = '/workbench/sprite/download/'+userFolder
     download_file(userFolder)
-    return flask.Response(json.dumps({'status': 'done', 'userFolder': userFolder, 'download': download_link}), status=200)
+    return flask.Response(json.dumps({'status': 'done', 'userFolder': userFolder, 'download': download_link}), status=200, mimetype='text/json')
 
 
 # Route to extract images and create the spritesheet according to user defined labels incase of custom data
@@ -432,7 +516,7 @@ def generateCustomSprite():
     try:
         createSpritesheet(app.config['DATASET_FOLDER']+userFolder, selectedLabels, width, height)
     except:
-         return flask.Response(json.dumps({'error': str(sys.exc_info()[0])}), status=400)
+         return flask.Response(json.dumps({'error': str(sys.exc_info()[0])}), status=400, mimetype='text/json')
     with open(app.config['DATASET_FOLDER']+userFolder+'/spritesheet/labelnames.csv', 'w', newline='') as labelsnamesCSVfile:
         writer = csv.writer(labelsnamesCSVfile)
         writer.writerow(selectedLabels)
@@ -445,7 +529,7 @@ def generateCustomSprite():
                  '/spritesheet/labelnames.csv', '/labelnames.csv')
     download_link = '/workbench/sprite/download/'+userFolder
     download_file(userFolder)
-    return flask.Response(json.dumps({'status': 'done', 'userFolder': userFolder, 'download': download_link}), status=200)
+    return flask.Response(json.dumps({'status': 'done', 'userFolder': userFolder, 'download': download_link}), status=200, mimetype='text/json')
 
 
 # Dynamic download route for dataset.zip
@@ -459,9 +543,9 @@ def download_file(userFolder):
 @app.route('/workbench/deleteDataset/<userFolder>', methods=['POST'])
 def deleteDataset(userFolder):
     if '/' in userFolder or '..' in userFolder or len(userFolder) != 20:
-        return flask.Response(json.dumps({"deleted": "false", 'message': 'Traversal detected or invalid foldername'}), status=403)
+        return flask.Response(json.dumps({"deleted": "false", 'message': 'Traversal detected or invalid foldername'}), status=403, mimetype='text/json')
     shutil.rmtree(app.config['DATASET_FOLDER']+userFolder)
-    return flask.Response(json.dumps({"deleted": "true"}), status=200)
+    return flask.Response(json.dumps({"deleted": "true"}), status=200, mimetype='text/json')
 
 
 # Helper function for converting slides into jpg 
@@ -488,7 +572,7 @@ def convert(fname, input_dir , output_dir):
     try:
         
         save_name = fname.split(".")[0] + ".jpg"
-        os_obj = openslide.OpenSlide(input_dir+"/"+fname)
+        os_obj = construct_reader(input_dir+"/"+fname)
         w, h = os_obj.dimensions
         w_rep, h_rep = int(w/UNIT_X)+1, int(h/UNIT_Y)+1
         w_end, h_end = w%UNIT_X, h%UNIT_Y
@@ -545,13 +629,13 @@ def roiExtract():
     # img = slide.open_image(img_path)
     # res= { "data" :"" }
     # res['data']= pred
-    return flask.Response(json.dumps({"extracted": "true"}), status=200)
+    return flask.Response(json.dumps({"extracted": "true"}), status=200, mimetype='text/json')
     
 # Route to send back the extracted
 @app.route('/roiextract/<file_name>')
 def roiextract(file_name):
 
-    return flask.send_from_directory(app.config["ROI_FOLDER"],filename=file_name, as_attachment=True, cache_timeout=0 )
+    return flask.send_from_directory(app.config["ROI_FOLDER"], file_name, as_attachment=True, cache_timeout=0 )
 
 
 # Google Drive API (OAuth and File Download) Routes
@@ -583,3 +667,32 @@ def checkDownloadStatusRoute():
     if not body:
         return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
     return checkDownloadStatus(body)
+
+# DICOM Explorer UI and DICOM server hostname and port
+@app.route('/dicomsrv/location', methods=['GET'])
+def guiLocation():
+    port = os.getenv("DICOM_PORT")
+    hostname = os.getenv("DICOM_HOSTNAME")
+    ui_port = os.getenv("DICOM_UI_PORT")
+    ui_hostname = os.getenv("DICOM_UI_HOSTNAME")
+    res = {}
+    if port is not None:
+        res["port"] = int(port)
+    else:
+        print("DICOM_PORT env variable not found")
+
+    if ui_port is not None:
+        res["ui_port"] = int(ui_port)
+    else:
+        print("DICOM_UI_PORT env variable not found")
+
+
+    # If the DICOM server is on a different computer, this can be uncommented,
+    # the frontend will parse this, but it's better to keep this in a comment against env var poisoning
+    # if hostname is not None:
+    #     res["hostname"] = hostname
+    # if ui_hostname is not None:
+    #     res["ui_hostname"] = ui_hostname
+
+    success = "port" in res and "ui_port" in res
+    return flask.Response(json.dumps(res), status=200 if success else 500, mimetype='text/json')

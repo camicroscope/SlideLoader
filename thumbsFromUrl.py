@@ -1,4 +1,4 @@
-import openslide
+from image_reader import construct_reader
 from multiprocessing.pool import ThreadPool
 import requests
 import sys
@@ -18,7 +18,7 @@ def get_thumbnail(obj):
     slide = obj['file-location']
     dest = obj['case_id'] + '.png'
     try:
-        image = openslide.open_slide(slide)
+        image = construct_reader(slide)
         image.get_thumbnail([200,200]).save(dest, "PNG")
         return dest
     except BaseException as e:

@@ -21,7 +21,7 @@ import zipfile
 import csv 
 import pathlib
 import logging
-from gDriveDownload import start, afterUrlAuth, callApi
+from gdrive_utils import getFileFromGdrive, gDriveGetFile, checkDownloadStatus
 from threading import Thread
 from file_extensions import ALLOWED_EXTENSIONS
 from time import sleep
@@ -47,8 +47,6 @@ app.config['TEMP_FOLDER'] = "/images/uploading/"
 app.config['TOKEN_SIZE'] = 10
 app.config['SECRET_KEY'] = os.urandom(24)
 app.config['ROI_FOLDER'] = "/images/roiDownload"
-
-
 
 # should be used instead of secure_filename to create new files whose extensions are important.
 # use secure_filename to access previous files.
@@ -656,39 +654,19 @@ class getFileFromGdrive(Thread):
 
 # Route to start the OAuth Server(to listen if user is Authenticated) and start the file Download after Authentication
 @app.route('/googleDriveUpload/getFile', methods=['POST'])
-def gDriveGetFile():
+def gDriveGetFileRoute():
     body = flask.request.get_json()
     if not body:
-        return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400, mimetype='text/json')
-
-    token = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
-    token = secure_filename(token)
-    tmppath = os.path.join("/images/uploading/", token)
-    # regenerate if we happen to collide
-    while os.path.isfile(tmppath):
-        token = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
-        token = secure_filename(token)
-        tmppath = os.path.join("/images/uploading/", token)
-
-    try:
-        params = start(body['userId'])
-    except:
-        return flask.Response(json.dumps({'error': str(sys.exc_info()[0])}), status=400, mimetype='text/json')
-    thread_a = getFileFromGdrive(params, body['userId'], body['fileId'], token)
-    thread_a.start()
-    return flask.Response(json.dumps({"authURL": params["auth_url"], "token": token}), status=200, mimetype='text/json')
+        return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
+    return gDriveGetFile(body)
 
 # To check if a particular file is downloaded from Gdrive
 @app.route('/googleDriveUpload/checkStatus', methods=['POST'])
-def checkDownloadStatus():
+def checkDownloadStatusRoute():
     body = flask.request.get_json()
     if not body:
-        return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400, mimetype='text/json')
-    token = body['token']
-    path = app.config['TEMP_FOLDER']+'/'+token
-    if os.path.isfile(path):
-        return flask.Response(json.dumps({"downloadDone": True}), status=200, mimetype='text/json')
-    return flask.Response(json.dumps({"downloadDone": False}), status=200, mimetype='text/json')
+        return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400)
+    return checkDownloadStatus(body)
 
 # DICOM Explorer UI and DICOM server hostname and port
 @app.route('/dicomsrv/location', methods=['GET'])

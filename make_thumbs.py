@@ -1,5 +1,5 @@
 import requests
-import openslide
+from image_reader import construct_reader
 import pycurl
 import os
 
@@ -33,7 +33,7 @@ def process(record):
     # skip ones which already have a thumbnail, unless otherwise specified
     if REGNERATE or not record.get("thumbnail", False):
         try:
-            with openslide.OpenSlide(file) as slide:
+            with construct_reader(file) as slide:
                 gen_thumbnail(name, slide, IM_SIZE, imgtype="png")
                 setThumb(record['_id']["$oid"], name+".png")
                 # return empty to denote no issue.

@@ -2,48 +2,41 @@ import hashlib
 import os
 import json
 import requests
-
-import openslide
+import image_reader
+import threading
 
 post_url = "http://ca-back:4010/data/Slide/post"
 
 
 
+# Keep BioFormats Java thread alive; to minimize reattaching thread
+keep_alive_for_thread = threading.local()
+
 # given a path, get metadata
-def getMetadata(filename, upload_folder, extended):
+def getMetadata(filepath, extended, raise_exception):
     # TODO consider restricting filepath
-    metadata = {}
-    filepath = os.path.join(upload_folder, filename)
     if not os.path.isfile(filepath):
+        if raise_exception:
+            raise ValueError("No such file")
         msg = {"error": "No such file"}
         print(msg)
         return msg
-    metadata['location'] = filepath
     try:
-        slide = openslide.OpenSlide(filepath)
+        slide = image_reader.construct_reader(filepath)
     except BaseException as e:
-        msg = {"type": "Openslide", "error": str(e)}
-        print(msg)
-        return msg
-    slideData = slide.properties
-    if extended:
-        return {k:v for (k,v) in slideData.items()}
-    else:
-        metadata['mpp-x'] = slideData.get(openslide.PROPERTY_NAME_MPP_X, None)
-        metadata['mpp-y'] = slideData.get(openslide.PROPERTY_NAME_MPP_Y, None)
-        metadata['height'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_HEIGHT, None) or slideData.get(
-            "openslide.level[0].height", None)
-        metadata['width'] = slideData.get(openslide.PROPERTY_NAME_BOUNDS_WIDTH, None) or slideData.get(
-            "openslide.level[0].width", None)
-        metadata['vendor'] = slideData.get(openslide.PROPERTY_NAME_VENDOR, None)
-        metadata['level_count'] = int(slideData.get('level_count', 1))
-        metadata['objective'] = float(slideData.get(openslide.PROPERTY_NAME_OBJECTIVE_POWER, 0) or
-                                      slideData.get("aperio.AppMag", -1.0))
-        metadata['md5sum'] = file_md5(filepath)
-        metadata['comment'] = slideData.get(openslide.PROPERTY_NAME_COMMENT, None)
-        metadata['study'] = ""
-        metadata['specimen'] = ""
-        return metadata
+        if raise_exception:
+            raise e
+        # here, e has attribute "error"
+        return e.args[0]
+
+    try:
+        metadata = slide.get_basic_metadata(extended)
+    except BaseException as e:
+        if raise_exception:
+            raise e
+        return {'error': str(e)}
+    metadata['location'] = filepath
+    return metadata
 
 
 def postslide(img, url, token=''):
@@ -60,10 +53,10 @@ def postslide(img, url, token=''):
 
 
 # given a list of path, get metadata for each
-def getMetadataList(filenames, upload_folder, extended):
+def getMetadataList(filenames, extended, raise_exception):
     allData = []
     for filename in filenames:
-        allData.append(getMetadata(filename, upload_folder, extended))
+        allData.append(getMetadata(filename, extended, raise_exception))
     return allData
 
 

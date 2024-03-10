@@ -1,4 +1,4 @@
-FROM camicroscope/image-decoders:latest
+FROM camicroscope/image-decoders:1
 
 WORKDIR /var/www
 RUN apt-get update
@@ -29,6 +29,9 @@ ENV FLASK_DEBUG True
 ENV BFBRIDGE_LOGLEVEL=WARN
 
 RUN mkdir -p /images/uploading
+
+COPY openslide_copy.sh .
+RUN bash openslide_copy.sh
 
 COPY requirements.txt .
 RUN pip3 install -r requirements.txt --break-system-packages

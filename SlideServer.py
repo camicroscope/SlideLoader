@@ -768,6 +768,37 @@ def find_referenced_image(study, ds):
     # If the instance is not found in the study
     return None, None
 
+def downloadRawDicom(source_url, study_uid, series_uid, instance_uid, output_fn):
+    instance_url = source_url + f"/studies/{study_uid}/series/{series_uid}/instances/{instance_uid}"
+    response = requests.get(instance_url, stream=True)
+    if response.status_code == 200:
+        with open(output_fn, "wb") as file:
+            app.logger.info("Working on file: " +  output_fn)
+            dicom_started = False
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    if not dicom_started:
+                        # Check if the chunk contains "DICM"
+                        if b"DICM" in chunk:
+                            # Find the position of "DICM" in the chunk
+                            dicm_index = chunk.find(b"DICM")
+                            # Extract preamble and DICM
+                            #preamble = b"\x00" * 1
+                            preamble_dicm_chunk =  chunk[:dicm_index + 4]
+                            # Write the preamble and DICM to the file
+                            file.write(preamble_dicm_chunk)
+                            # Write the remaining part of the chunk to the file
+                            file.write(chunk[dicm_index + 4:])
+                            # Set dicom_started to True
+                            dicom_started = True
+                    else:
+                        # Write entire chunk to the file
+                        file.write(chunk)
+        
+        print("DICOM instance saved successfully.")
+    else:
+        print(f"Failed to retrieve DICOM instance. Status code: {response.status_code}")
+
 # dicom web based routes
 
 def doDicomSlideDownloads(source_url, study, series, instance_list, camic_slide_id):
@@ -775,15 +806,11 @@ def doDicomSlideDownloads(source_url, study, series, instance_list, camic_slide_
     for instance in instance_list:
         app.logger.info("Working on instance: " +  instance)
         try:
-            instance_resp = client.retrieve_instance(
-                study_instance_uid=study,
-                series_instance_uid=series,
-                sop_instance_uid=instance
-            )
             dest_directory = app.config['UPLOAD_FOLDER'] + _get_hash_prefix(study, length=10) + "_dicomweb"
             if not os.path.exists(dest_directory):
                 os.makedirs(dest_directory)
-            instance_resp.save_as(dest_directory + "/" + instance + ".dcm")
+            output_fn = dest_directory + "/" + instance + ".dcm"
+            downloadRawDicom(source_url, study, series, instance, output_fn)
         except BaseException as e:
             app.logger.info("err", str(e))
     # we're done, update the camic slide instance to done
@@ -867,7 +894,7 @@ def getDicomSeriesSM(source_url, study, series, blocking=False):
         'series': series,
         'specimen': '',
         'status': 'loading',
-        'name': study + "~" + series
+        'name': _get_hash_prefix(study + "~" + series, length=12)
     }
     slide_id = _add_slide(new_slide)
     if blocking:

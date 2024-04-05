@@ -12,6 +12,7 @@ from PIL import Image
 import urllib
 import flask
 import flask_cors
+import threading
 from flask import request
 from image_reader import construct_reader, suggest_folder_name
 from werkzeug.utils import secure_filename
@@ -25,6 +26,11 @@ from gdrive_utils import getFileFromGdrive, gDriveGetFile, checkDownloadStatus
 from threading import Thread
 from file_extensions import ALLOWED_EXTENSIONS
 from time import sleep
+import hashlib
+from urllib.parse import urlparse
+import pydicom
+
+from DicomAnnotUtils import dicomToCamic, camicToDicom
 
 try:
     from io import BytesIO
@@ -37,16 +43,17 @@ flask_cors.CORS(app)
 # dataset storage location for the workbench tasks 
 app.config['DATASET_FOLDER'] = "/images/dataset/"
 
-#creating a uploading folder if it doesn't exist
-if not os.path.exists('/images/uploading/'):
-    os.mkdir('/images/uploading')
-
 # where to put and get slides
 app.config['UPLOAD_FOLDER'] = "/images/"
 app.config['TEMP_FOLDER'] = "/images/uploading/"
 app.config['TOKEN_SIZE'] = 10
 app.config['SECRET_KEY'] = os.urandom(24)
 app.config['ROI_FOLDER'] = "/images/roiDownload"
+
+#creating a uploading folder if it doesn't exist
+if not os.path.exists(app.config['TEMP_FOLDER']):
+    os.mkdir(app.config['TEMP_FOLDER'])
+
 
 # should be used instead of secure_filename to create new files whose extensions are important.
 # use secure_filename to access previous files.
@@ -696,3 +703,113 @@ def guiLocation():
 
     success = "port" in res and "ui_port" in res
     return flask.Response(json.dumps(res), status=200 if success else 500, mimetype='text/json')
+
+# dicom web based routes
+
+def _get_hash_prefix(input_string, length=8):
+    algorithm='sha256'
+    input_bytes = input_string.encode('utf-8')
+    hash_obj = hashlib.new(algorithm)
+    hash_obj.update(input_bytes)
+    full_hash = hash_obj.hexdigest()
+    hash_prefix = full_hash[:length]
+    
+    return hash_prefix
+
+def find_referenced_dicom_file(annotation_file, dicom_directory):
+    # Load the DICOM annotation file
+    annotation_ds = pydicom.dcmread(annotation_file)
+
+    # Extract SOPInstanceUID or SOPClassUID from the annotation
+    referenced_sop_instance_uid = annotation_ds.ReferencedSeriesSequence[0].ReferencedInstanceSequence[0].ReferencedSOPInstanceUID
+    referenced_sop_class_uid = annotation_ds.ReferencedImageSequence[0].ReferencedSOPClassUID
+
+    # Iterate through DICOM files in the directory
+    for file_name in os.listdir(dicom_directory):
+        file_path = os.path.join(dicom_directory, file_name)
+        if os.path.isfile(file_path) and file_name.endswith('.dcm'):
+            # Load DICOM file
+            dicom_ds = pydicom.dcmread(file_path)
+            
+            # Check if SOPInstanceUID or SOPClassUID matches
+            if dicom_ds.SOPInstanceUID == referenced_sop_instance_uid or dicom_ds.SOPClassUID == referenced_sop_class_uid:
+                return file_path
+    
+    # If no matching DICOM file found
+    return None
+
+def _get_dicom_series(urls, dest):
+    for url in urls:
+        parsed_url = urlparse(url)
+        filename = os.path.basename(parsed_url.path)
+        # dl if the filename is not in this dir
+        r = requests.get(url)
+        save_path = dest + "/" + filename 
+        if os.path.exists(save_path):
+            print("Skipping dl, file already exists:", save_path)
+        else:
+            open(save_path, 'wb').write(r.content)
+
+def _get_dicom_annot(url, dest):
+    parsed_url = urlparse(url)
+    filename = os.path.basename(parsed_url.path)
+    # dl if the filename is not in this dir
+    r = requests.get(url)
+    save_path = dest + "/" + filename 
+    open(save_path, 'wb').write(r.content)
+    return save_path
+
+
+def dicomImportSeries(source, study, series, urls):
+    # top level destination is app.config['UPLOAD_FOLDER']
+    # subdirectory is a hash of the study, series as str
+    dest = app.config['UPLOAD_FOLDER']  + "/" + _get_hash_prefix(study + "~" + series, length=10) + "_dicomweb/"
+    #creating a uploading folder if it doesn't exist
+    if not os.path.exists(dest):
+        os.mkdir(dest)
+    # get the slide info
+    download_thread = threading.Thread(target=_get_dicom_series, args=(urls, dest))
+    download_thread.start()
+    # return where the first url will be found
+    parsed_url = urlparse(urls[0])
+    filename = os.path.basename(parsed_url.path)
+    return dest + "/" + filename
+
+def dicomImportAnnotations(source, study, series, url, slide_id):
+    # get the annotation, put it in temp
+    save_path = _get_dicom_annot(url, app.config['TEMP_FOLDER'])
+    # find the slide file
+    search_dir = app.config['UPLOAD_FOLDER']  + "/" + _get_hash_prefix(study + "~" + series, length=10) + "_dicomweb/"
+    matching_slide = find_referenced_dicom_file(save_path, search_dir)
+    if matching_slide is None:
+        return None
+    else:
+        res = dicomToCamic(save_path,matching_slide,None,slide_id=slide_id, file_mode=False)
+        return res
+    
+@app.route('/dicom/importSeries', methods=['POST'])
+def dicom_import():
+    try:
+        data = flask.request.get_json()
+        source = data['source']
+        study = data['study']
+        series = data['series']
+        urls = data['urls']
+        savedAs = dicomImportSeries(source, study, series, urls)
+        return {"filepath": savedAs}
+    except BaseException as e:
+        return {"err": str(e)}
+
+    
+@app.route('/dicom/importAnnot', methods=['POST'])
+def dicom_annot():
+    try:
+        data = flask.request.get_json()
+        source = data['source']
+        study = data['study']
+        series = data['series']
+        url = data['url']
+        slide_id = data['slide_id']
+        return dicomImportAnnotations(source, study, series, url, slide_id)
+    except BaseException as e:
+        return {"err": str(e)}

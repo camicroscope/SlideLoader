@@ -877,7 +877,7 @@ def getDicomSeriesSM(source_url, study, series, blocking=False):
     instance_list = [x['00080018']['Value'][0] for x in instances]
 
     # do the download
-    dest_directory = app.config['UPLOAD_FOLDER']  + "/" + _get_hash_prefix(study + "~" + series, length=10) + "_dicomweb"
+    dest_directory = app.config['UPLOAD_FOLDER'] + _get_hash_prefix(study, length=10) + "_dicomweb"
     if not os.path.exists(dest_directory):
         os.makedirs(dest_directory)
     first_file = dest_directory + "/" + instance_list[0] + ".dcm"

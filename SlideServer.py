@@ -722,11 +722,7 @@ mongo_db = mongo_client[app.config['MONGO_DB']]
 # find if a slide already exists for this
 def _findMatchingSlide(study, series):
     query = {"study": study, "series": series}
-    result = mongo_db['slide'].find(query)
-    if len(result) == 0:
-        return None
-    else:
-        return result[0]
+    return mongo_db['slide'].find_one(query)
     
 def _getSlide(slide_id):
     object_id = ObjectId(slide_id)
@@ -740,11 +736,11 @@ def _setSlideStatus(slide_id, status):
 
 def _add_slide(document):
     insert_result = mongo_db['slide'].insert_one(document)
-    print("Inserted document ID:", insert_result.inserted_id)
+    return str(insert_result.inserted_id)
 
 def _add_mark(document):
     insert_result = mongo_db['mark'].insert_one(document)
-    return insert_result.inserted_id
+    return str(insert_result.inserted_id)
 
 
 def _get_hash_prefix(input_string, length=8):
@@ -758,7 +754,7 @@ def _get_hash_prefix(input_string, length=8):
 
 def find_referenced_image(study, ds):
     instance_uid = ds.ReferencedImageSequence[0].ReferencedSOPInstanceUID
-    study_directory = app.config['UPLOAD_FOLDER']  + "/" + _get_hash_prefix(study, length=10) + "_dicomweb/"
+    study_directory = app.config['UPLOAD_FOLDER'] + _get_hash_prefix(study, length=10) + "_dicomweb"
     # Traverse through the study directory
     for root, dirs, files in os.walk(study_directory):
         for file_name in files:
@@ -777,16 +773,19 @@ def find_referenced_image(study, ds):
 def doDicomSlideDownloads(source_url, study, series, instance_list, camic_slide_id):
     client = DICOMwebClient(source_url)
     for instance in instance_list:
+        app.logger.info("Working on instance: " +  instance)
         try:
             instance_resp = client.retrieve_instance(
                 study_instance_uid=study,
                 series_instance_uid=series,
                 sop_instance_uid=instance
             )
-            dest_directory = app.config['UPLOAD_FOLDER']  + "/" + _get_hash_prefix(study, length=10) + "_dicomweb/"
+            dest_directory = app.config['UPLOAD_FOLDER'] + _get_hash_prefix(study, length=10) + "_dicomweb"
+            if not os.path.exists(dest_directory):
+                os.makedirs(dest_directory)
             instance_resp.save_as(dest_directory + "/" + instance + ".dcm")
         except BaseException as e:
-            print("err", e)
+            app.logger.info("err", str(e))
     # we're done, update the camic slide instance to done
     _setSlideStatus(camic_slide_id, "done")
     camic_slide_id
@@ -794,6 +793,7 @@ def doDicomSlideDownloads(source_url, study, series, instance_list, camic_slide_
 def doDicomAnnDownloads(source_url, study, series, instance_list):
     client = DICOMwebClient(source_url)
     for instance in instance_list:
+        app.logger.info("Working on instance: " +  instance)
         try:
             instance_resp = client.retrieve_instance(
                 study_instance_uid=study,
@@ -806,7 +806,9 @@ def doDicomAnnDownloads(source_url, study, series, instance_list):
                 if slide_res:
                     slide_id = str(slide_res[0]['_id'])
                     reference_slide_path = ref_file
-                    dest_directory = app.config['UPLOAD_FOLDER']  + "/" + _get_hash_prefix(study, length=10) + "_dicomweb/"
+                    dest_directory = app.config['UPLOAD_FOLDER'] + _get_hash_prefix(study, length=10) + "_dicomweb"
+                    if not os.path.exists(dest_directory):
+                        os.makedirs(dest_directory)
                     annot_path = dest_directory + "/" + instance + ".dcm"
                     instance_resp.save_as(annot_path)
                     res = dicomToCamic(annot_path, reference_slide_path, None, slide_id, file_mode=False)
@@ -818,10 +820,10 @@ def doDicomAnnDownloads(source_url, study, series, instance_list):
                     getDicomSmThenAnn(source_url, study, ref_series, study, series)
             else:
                 e = {"err": "err", "msg": "couldn't find the reference"}
-                print(e)
+                app.logger.info("err", str(e))
                 return e 
         except BaseException as e:
-            print("err", e)
+            app.logger.info("err", str(e))
             
 
 
@@ -832,14 +834,14 @@ def getDicomSeriesANN(source_url, study, series):
         series_instance_uid=series
     )
     instance_list = [x['00080018']['Value'][0] for x in instances]
-    load_thread = threading.Thread(target=doDicomAnnDownloads, args=(client, study, series, instance_list))
+    load_thread = threading.Thread(target=doDicomAnnDownloads, args=(source_url, study, series, instance_list))
     load_thread.start()
 
 def getDicomSeriesSM(source_url, study, series, blocking=False):
     # check if the slide object matching already exists, returning it if so.
-    matching_slides = _findMatchingSlide(study, series)
-    if matching_slides:
-        return {'status': 'already exists', 'slide_id': str(matching_slides[0]["_id"])}
+    matching_slide = _findMatchingSlide(study, series)
+    if matching_slide:
+        return {'status': 'already exists', 'slide_id': str(matching_slide["_id"])}
     client = DICOMwebClient(source_url)
     instances = client.search_for_instances(
         study_instance_uid=study,
@@ -848,7 +850,9 @@ def getDicomSeriesSM(source_url, study, series, blocking=False):
     instance_list = [x['00080018']['Value'][0] for x in instances]
 
     # do the download
-    dest_directory = app.config['UPLOAD_FOLDER']  + "/" + _get_hash_prefix(study + "~" + series, length=10) + "_dicomweb/"
+    dest_directory = app.config['UPLOAD_FOLDER']  + "/" + _get_hash_prefix(study + "~" + series, length=10) + "_dicomweb"
+    if not os.path.exists(dest_directory):
+        os.makedirs(dest_directory)
     first_file = dest_directory + "/" + instance_list[0] + ".dcm"
     # if the slide object does not exist, make it using the first instance file name with in progress status
     current_time = datetime.now()
@@ -867,9 +871,9 @@ def getDicomSeriesSM(source_url, study, series, blocking=False):
     }
     slide_id = _add_slide(new_slide)
     if blocking:
-        doDicomSlideDownloads(client, study, series, instance_list, slide_id)
+        doDicomSlideDownloads(source_url, study, series, instance_list, slide_id)
     else:
-        load_thread = threading.Thread(target=doDicomSlideDownloads, args=(client, study, series, instance_list, slide_id))
+        load_thread = threading.Thread(target=doDicomSlideDownloads, args=(source_url, study, series, instance_list, slide_id))
         load_thread.start()
     return slide_id
 
@@ -887,8 +891,10 @@ def dicom_import():
         series = data['series']
         modality = data['modality']
         if modality == "ANN":
-            return getDicomSeriesANN(source_url, study, series)
+            slide_id =  getDicomSeriesANN(source_url, study, series)
+            return({"modality": modality, "status": "starting"})
         else:
-            return getDicomSeriesSM(source_url, study, series)
+            slide_id = getDicomSeriesSM(source_url, study, series, blocking=False)
+            return({"modality": modality, 'slide_id': slide_id})
     except BaseException as e:
-        return {"err": str(e)}
+        raise e

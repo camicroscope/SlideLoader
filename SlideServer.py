@@ -773,6 +773,8 @@ def downloadRawDicom(source_url, study_uid, series_uid, instance_uid, output_fn)
     response = requests.get(instance_url, stream=True)
     if response.status_code == 200:
         with open(output_fn, "wb") as file:
+            content_type_header = response.headers.get('Content-Type')
+            boundary = content_type_header.split('boundary=')[1].split(';')[0].strip()
             app.logger.info("Working on file: " +  output_fn)
             dicom_started = False
             for chunk in response.iter_content(chunk_size=8192):
@@ -794,6 +796,9 @@ def downloadRawDicom(source_url, study_uid, series_uid, instance_uid, output_fn)
                     else:
                         # Write entire chunk to the file
                         file.write(chunk)
+            # remove the trailing multipart stuff
+            file.seek(-len(boundary) - 8, 2)  # Move the file pointer to before the boundary
+            file.truncate()  # Truncate the file at the current position
         
         print("DICOM instance saved successfully.")
     else:

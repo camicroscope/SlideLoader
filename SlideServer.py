@@ -731,7 +731,7 @@ def _getSlide(slide_id):
 
 def _setSlideStatus(slide_id, status):
     object_id = ObjectId(slide_id)
-    result = mongo_db['slide'].collection.update_one({"_id": object_id}, {"$set": {"status": status}})
+    result = mongo_db['slide'].update_one({"_id": object_id}, {"$set": {"status": status}})
     return result
 
 def _add_slide(document):

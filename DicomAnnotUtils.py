@@ -368,6 +368,7 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                     # and the bound
                 # then add the last one
                 points = coordinates_array[prevIndex:, :]
+                points = np.concatenate((points, [points[0]]))
                 if len(points) > 0:
                     newFeature = deepcopy(featureTemplate)
                     newFeature['geometry']['coordinates'].append(points.tolist())
@@ -378,6 +379,7 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
             else:
                 # whole thing at once. Only do area and circumference here.
                 points = coordinates_array
+                points = np.concatenate((points, [points[0]]))
                 newFeature = deepcopy(featureTemplate)
                 newFeature['geometry']['coordinates'].append(points.tolist())
                 newFeature['bound']['coordinates'].append(_makeBound(points))

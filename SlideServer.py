@@ -781,10 +781,9 @@ def downloadRawDicom(source_url, study_uid, series_uid, instance_uid, output_fn)
                 if chunk:
                     if not dicom_started:
                         # Check if the chunk contains "\r\n\r\n""
-                        if b"DICM" in chunk:
+                        if b"\r\n\r\n" in chunk:
                             # Find the position of "\r\n\r\n"" in the chunk
                             start_idx = chunk.find(b"\r\n\r\n")
-                            app.logger.info(str(start_idx))
                             file.write(chunk[start_idx + 4:])
                             # Set dicom_started to True
                             dicom_started = True

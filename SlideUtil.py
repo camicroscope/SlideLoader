@@ -1,58 +1,24 @@
-import csv
-import os
-import time
-from multiprocessing.pool import ThreadPool
+import argparse
 
-from image_reader import construct_reader
+def upload_slides(filepath, token):
+    # Functionality to upload slides using the provided filepath and token
+    print(f"Uploading slides from '{filepath}' using token '{token}'.")
 
-from dev_utils import getMetadata
-from dev_utils import postslide
-from dev_utils import post_url
+def main():
+    parser = argparse.ArgumentParser(description='Upload slides securely.')
+    parser.add_argument('filepath', type=str, help='Path to the slides file')
+    parser.add_argument('--token', type=str, help='Authentication token for secure upload')
 
-# GLOBALS (for now)
-config = {'thumbnail_size': 100, 'thread_limit': 20}
-manifest_path = 'manifest.csv'
-apiKey = '<apiKey>'
+    args = parser.parse_args()
 
-# process expects a single image metadata as dictionary
-def process(img):
-    try:
-        img = openslidedata(img)
-        img['study'] = img.get('study', "")
-        img['specimen'] = img.get('specimen', "")
-        img['location'] = img['location'] or img['filename']
-        img = postslide(img, post_url, apiKey)
-    except BaseException as e:
-        img['_status'] = e
-    return img
+    filepath = args.filepath
+    token = args.token
 
+    if token is None:
+        token = input("Enter token: ")
 
-def gen_thumbnail(filename, slide, size, imgtype="png"):
-    dest = filename + "." + imgtype
-    print(dest)
-    slide.get_thumbnail([size, size]).save(dest, imgtype.upper())
+    # Call the function to upload slides
+    upload_slides(filepath, token)
 
-
-def openslidedata(metadata):
-    if not os.path.isfile(metadata['location']):
-        raise IOError("No such file")
-
-    slide = construct_reader(metadata['location'])
-    metadata_retrieved = slide.get_basic_metadata(False)
-    for k, v in metadata_retrieved.items():
-        if k not in metadata:
-            metadata[k] = v
-    metadata['timestamp'] = time.time()
-    thumbnail_size = config.get('thumbnail_size', None)
-    if thumbnail_size:
-        gen_thumbnail(metadata['location'], slide, thumbnail_size)
-    return metadata
-
-# get manifest
-with open(manifest_path, 'r') as f:
-    reader = csv.DictReader(f)
-    manifest = [row for row in reader]
-    thread_limit = config.get('thread_limit', 10)
-    # run process on each image
-    res = ThreadPool(thread_limit).imap_unordered(process, manifest)
-    print([r for r in res])
+if __name__ == "__main__":
+    main()

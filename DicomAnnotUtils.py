@@ -226,6 +226,17 @@ def _polygon_perimeter(vertices):
         perimeter += np.linalg.norm(np.array(vertices[i]) - np.array(vertices[j]))
     return perimeter
 
+def getPointCoordinatesDataArray(x):
+    if 'PointCoordinatesData' in x:
+        n = x.PointCoordinatesData
+        return np.frombuffer(n, dtype=np.float32)
+    elif 'DoublePointCoordinatesData' in x:
+        n = x.DoublePointCoordinatesData
+        return np.frombuffer(n, dtype=np.float64)
+    else:
+        raise ValueError("No coordinates found in array item")
+
+
 def convert_ellipse(x1_major,y1_major,x2_major,y2_major,x1_minor,y1_minor,x2_minor,y2_minor):    
     center_x = (x1_major + x2_major) / 2
     center_y = (y1_major + y2_major) / 2
@@ -266,8 +277,7 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
         
         # handle other cases first
         if x.GraphicType == "ELLIPSE":
-            n = x.PointCoordinatesData
-            m = np.frombuffer(n, dtype=np.float32)
+            m = getPointCoordinatesDataArray(x)
             # sets of 4 points, 8 numbers
             for i in range(8, len(m), 8):
                 ellipse_points = n[i-8, i]
@@ -292,8 +302,7 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                 res.append(deepcopy(exported_annot))       
         elif x.GraphicType == "POINT":
             # sets of 1 point, 2 numbers
-            n = x.PointCoordinatesData
-            m = np.frombuffer(n, dtype=np.float32)
+            m = getPointCoordinatesDataArray(x)
             # sets of 4 points, 8 numbers
             for i in range(2, len(m), 2):
                 point = n[i-2, i]
@@ -308,8 +317,7 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                 exported_annot['provenance']['analysis']['execution_id'] = "_DICOM_" + _generate_random_string(10)
                 res.append(deepcopy(exported_annot))  
         elif x.GraphicType == "RECTANGLE":
-            n = x.PointCoordinatesData
-            m = np.frombuffer(n, dtype=np.float32)
+            m = getPointCoordinatesDataArray(x)
             # sets of 4 points, 8 numbers
             for i in range(8, len(m), 8):
                 rect_points = n[i-8, i]
@@ -332,8 +340,7 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                 exported_annot['provenance']['analysis']['execution_id'] = "_DICOM_" + _generate_random_string(10)
                 res.append(deepcopy(exported_annot))
         elif x.GraphicType == "POLYGON" or x.GraphicType == "POLYLINE":
-            n = x.PointCoordinatesData
-            m = np.frombuffer(n, dtype=np.float32)
+            m = getPointCoordinatesDataArray(x)
             coordinates_array = (np.array(m).reshape(-1, 2)) / [slide_width,slide_height] # normalize coordinates for camicroscope
             # split into different geometry objects Index List
             indexList = np.frombuffer(x.LongPrimitivePointIndexList, dtype=np.int32)

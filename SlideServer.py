@@ -780,24 +780,19 @@ def downloadRawDicom(source_url, study_uid, series_uid, instance_uid, output_fn)
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:
                     if not dicom_started:
-                        # Check if the chunk contains "DICM"
+                        # Check if the chunk contains "\r\n\r\n""
                         if b"DICM" in chunk:
-                            # Find the position of "DICM" in the chunk
-                            dicm_index = chunk.find(b"DICM")
-                            # Extract preamble and DICM
-                            #preamble = b"\x00" * 1
-                            preamble_dicm_chunk =  chunk[:dicm_index + 4]
-                            # Write the preamble and DICM to the file
-                            file.write(preamble_dicm_chunk)
-                            # Write the remaining part of the chunk to the file
-                            file.write(chunk[dicm_index + 4:])
+                            # Find the position of "\r\n\r\n"" in the chunk
+                            start_idx = chunk.find(b"\r\n\r\n")
+                            app.logger.info(str(start_idx))
+                            file.write(chunk[start_idx + 4:])
                             # Set dicom_started to True
                             dicom_started = True
                     else:
                         # Write entire chunk to the file
                         file.write(chunk)
             # remove the trailing multipart stuff
-            file.seek(-len(boundary) - 8, 2)  # Move the file pointer to before the boundary
+            file.seek(-len(boundary) - 6, 2)  # Move the file pointer to before the boundary
             file.truncate()  # Truncate the file at the current position
         
         print("DICOM instance saved successfully.")

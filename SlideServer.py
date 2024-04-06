@@ -811,7 +811,7 @@ def doDicomSlideDownloads(source_url, study, series, instance_list, camic_slide_
             output_fn = dest_directory + "/" + instance + ".dcm"
             downloadRawDicom(source_url, study, series, instance, output_fn)
         except BaseException as e:
-            app.logger.info("err", str(e))
+            app.logger.info("err: " + str(e))
     # we're done, update the camic slide instance to done
     _setSlideStatus(camic_slide_id, "done")
     camic_slide_id
@@ -846,10 +846,10 @@ def doDicomAnnDownloads(source_url, study, series, instance_list):
                     getDicomSmThenAnn(source_url, study, ref_series, study, series)
             else:
                 e = {"err": "err", "msg": "couldn't find the reference"}
-                app.logger.info("err", str(e))
+                app.logger.info("err: " + str(e))
                 return e 
         except BaseException as e:
-            app.logger.info("err", str(e))
+            app.logger.info("err: " +  str(e))
             
 
 

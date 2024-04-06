@@ -819,7 +819,7 @@ def doDicomSlideDownloads(source_url, study, series, instance_list, camic_slide_
 def doDicomAnnDownloads(source_url, study, series, instance_list):
     client = DICOMwebClient(source_url)
     for instance in instance_list:
-        app.logger.info("Working on instance: " +  instance)
+        app.logger.info("Working on instance: " + instance)
         try:
             instance_resp = client.retrieve_instance(
                 study_instance_uid=study,
@@ -830,7 +830,7 @@ def doDicomAnnDownloads(source_url, study, series, instance_list):
             if ref_series:
                 slide_res = _findMatchingSlide(study, ref_series)
                 if slide_res:
-                    slide_id = str(slide_res[0]['_id'])
+                    slide_id = str(slide_res['_id'])
                     reference_slide_path = ref_file
                     dest_directory = app.config['UPLOAD_FOLDER'] + _get_hash_prefix(study, length=10) + "_dicomweb"
                     if not os.path.exists(dest_directory):

@@ -280,7 +280,7 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
             m = getPointCoordinatesDataArray(x)
             # sets of 4 points, 8 numbers
             for i in range(8, len(m), 8):
-                ellipse_points = n[i-8, i]
+                ellipse_points = m[i-8, i]
                 x1_major = ellipse_points[0]/slide_width
                 y1_major = ellipse_points[1]/slide_height
                 x2_major = ellipse_points[2]/slide_width
@@ -305,7 +305,7 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
             m = getPointCoordinatesDataArray(x)
             # sets of 4 points, 8 numbers
             for i in range(2, len(m), 2):
-                point = n[i-2, i]
+                point = m[i-2, i]
                 center_x = point[0]/slide_width
                 center_y = point[1]/slide_height
                 newFeature = deepcopy(featureTemplate)
@@ -320,7 +320,7 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
             m = getPointCoordinatesDataArray(x)
             # sets of 4 points, 8 numbers
             for i in range(8, len(m), 8):
-                rect_points = n[i-8, i]
+                rect_points = m[i-8, i]
                 x1 = rect_points[0]/slide_width
                 y1 = rect_points[1]/slide_height
                 x2 = rect_points[2]/slide_width

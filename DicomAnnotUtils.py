@@ -357,7 +357,7 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                     norm_height *= -1
                 if 'TotalPixelMatrixOriginSequence' in slide_ds and len(slide_ds.TotalPixelMatrixOriginSequence):
                     offset_x = float(slide_ds.TotalPixelMatrixOriginSequence[0].XOffsetInSlideCoordinateSystem)
-                    offset_y = float(slide_ds.TotalPixelMatrixOriginSequence[0].XOffsetInSlideCoordinateSystem)
+                    offset_y = float(slide_ds.TotalPixelMatrixOriginSequence[0].YOffsetInSlideCoordinateSystem)
                 # then apply slide_ds.ImageOrientationSlide
             # normalize coordinates for camicroscope
             coordinates_array = (m.reshape(-1, 2))

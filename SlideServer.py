@@ -837,7 +837,7 @@ def doDicomAnnDownloads(source_url, study, series, instance_list):
                         os.makedirs(dest_directory)
                     annot_path = dest_directory + "/" + instance + ".dcm"
                     instance_resp.save_as(annot_path)
-                    res = dicomToCamic(annot_path, reference_slide_path, None, slide_id, file_mode=False)
+                    res = dicomToCamic(annot_path, reference_slide_path, None, source_url, slide_id, file_mode=False)
                     # load into camic
                     for doc in res:
                         _add_mark(doc)

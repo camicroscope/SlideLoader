@@ -245,7 +245,7 @@ def convert_ellipse(x1_major,y1_major,x2_major,y2_major,x1_minor,y1_minor,x2_min
     rotation = np.arctan2(y2_major - y1_major, x2_major - x1_major)
     return center_x, center_y, major_axis_length, minor_axis_length, rotation
 
-def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=False):
+def dicomToCamic(annot_path, image_path, output_file, source_url=None, slide_id=None, file_mode=False):
     slide_ds = pydicom.dcmread(image_path)
     annot_ds = pydicom.dcmread(annot_path)
     slide_width = slide_ds.TotalPixelMatrixColumns
@@ -275,6 +275,7 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
             exported_annot['provenance']['image']['slide'] = slide_id
         exported_annot['provenance']['image']['dicom-ReferencedSOPClassUID'] = annot_ds.ReferencedImageSequence[0].ReferencedSOPClassUID
         exported_annot['provenance']['image']['dicom-ReferencedSOPInstanceUID'] = annot_ds.ReferencedImageSequence[0].ReferencedSOPInstanceUID
+        exported_annot['provenance']['image']["dicom-source-url"] = source_url
         exported_annot['provenance']['image']["dicom-study"] = annot_ds.StudyInstanceUID
         exported_annot['provenance']['image']["dicom-series"] = annot_ds.SeriesInstanceUID
         exported_annot['provenance']['image']["dicom-instance"] = annot_ds.SOPInstanceUID

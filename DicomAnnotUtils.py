@@ -260,8 +260,8 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
     #mpp_y = pixel_size_y * 1000
     # TODO this is just for POLYGON. generalize later.
     res = []
+    isSegment = False
     for x in annot_ds.AnnotationGroupSequence:
-
         exported_annot = deepcopy(annotTemplate)
         exported_annot['properties']['annotations']['name'] = annot_ds.ContentLabel
         exported_annot['provenance']['analysis']['name'] = annot_ds.ContentLabel
@@ -269,6 +269,7 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
         exported_annot['provenance']['analysis']['execution_id'] = "_DICOM_" + _generate_random_string(10)
         if x.AnnotationGroupGenerationType == "AUTOMATIC":
             exported_annot['provenance']['analysis']['source'] = 'computer'
+            isSegment = True
         if slide_id:
             exported_annot['provenance']['image']['slide'] = slide_id
         exported_annot['provenance']['image']['dicom-ReferencedSOPClassUID'] = annot_ds.ReferencedImageSequence[0].ReferencedSOPClassUID
@@ -299,6 +300,11 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                 newFeature['geometry']["rotation"] = rotation
                 newFeature['bound']['type'] = "Point"
                 newFeature['bound']['coordinates'] = [center_x, center_y]
+                if isSegment:
+                        exported_annot["footprint"] = 4* major_axis_length*minor_axis_length,
+                        exported_annot["bbox"]= [center_x - major_axis_length, center_y - minor_axis_length,  center_x + major_axis_length, center_y + minor_axis_length]
+                        exported_annot["x"] = center_x
+                        exported_annot["y"] = center_y
                 exported_annot['geometries']['features'] = [newFeature]
                 res.append(deepcopy(exported_annot))       
         elif x.GraphicType == "POINT":
@@ -314,6 +320,11 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                 newFeature['geometry']['coordinates'] = [center_x, center_y]
                 newFeature['bound']['type'] = "Point"
                 newFeature['bound']['coordinates'] = [center_x, center_y]
+                if isSegment:
+                    exported_annot["footprint"] = slide_height*slide_width # always show points for now, big thing
+                    exported_annot["bbox"]= [center_x, center_y, slide_width, slide_height]
+                    exported_annot["x"] = center_x
+                    exported_annot["y"] = center_y
                 exported_annot['geometries']['features'] = [newFeature]
                 res.append(deepcopy(exported_annot))  
         elif x.GraphicType == "RECTANGLE":
@@ -334,6 +345,11 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                 newFeature['geometry']['coordinates'] = [[x1,y1], [x2,y2], [x3,y3], [x4,y4], [x1,y1]]
                 newFeature['bound']['type'] = "Polygon"
                 newFeature['bound']['coordinates'] = [[x1,y1], [x2,y2], [x3,y3], [x4,y4], [x1,y1]]
+                if isSegment:
+                    exported_annot["footprint"] = abs(x1-x3)*abs(y2-y4)
+                    exported_annot["bbox"]= [(x1+x3)/2, (y2+y4)/2, abs(x1-x3), abs(y2-y4)]
+                    exported_annot["x"] = (x1+x3)/2
+                    exported_annot["y"] = (y2+y4)/2
                 exported_annot['geometries']['features'] = [newFeature]
                 res.append(deepcopy(exported_annot))
         elif x.GraphicType == "POLYGON" or x.GraphicType == "POLYLINE":
@@ -382,7 +398,18 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                     if len(points) > 0:
                         newFeature = deepcopy(featureTemplate)
                         newFeature['geometry']['coordinates'].append(points.tolist())
-                        newFeature['bound']['coordinates'].append(_makeBound(points))
+                        bounding_box = _makeBound(points)
+                        # [[min_x, min_y], [min_x, max_y], [max_x, max_y], [max_x, min_y],[min_x, min_y]]
+                        newFeature['bound']['coordinates'].append(bounding_box)
+                        if isSegment:
+                            x1 = bounding_box[0][0]
+                            x3 = bounding_box[2][0]
+                            y2 = bounding_box[1][1]
+                            y4 = bounding_box[3][1]
+                            exported_annot["footprint"] = abs(x1-x3)*abs(y2-y4)
+                            exported_annot["bbox"]= [(x1+x3)/2, (y2+y4)/2, abs(x1-x3), abs(y2-y4)]
+                            exported_annot["x"] = (x1+x3)/2
+                            exported_annot["y"] = (y2+y4)/2
                         exported_annot['geometries']['features'] = [newFeature]
                         res.append(deepcopy(exported_annot))
                     prevIndex = end_idx
@@ -393,7 +420,18 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                 if len(points) > 0:
                     newFeature = deepcopy(featureTemplate)
                     newFeature['geometry']['coordinates'].append(points.tolist())
-                    newFeature['bound']['coordinates'].append(_makeBound(points))
+                    bounding_box = _makeBound(points)
+                    # [[min_x, min_y], [min_x, max_y], [max_x, max_y], [max_x, min_y],[min_x, min_y]]
+                    newFeature['bound']['coordinates'].append(bounding_box)
+                    if isSegment:
+                        x1 = bounding_box[0][0]
+                        x3 = bounding_box[2][0]
+                        y2 = bounding_box[1][1]
+                        y4 = bounding_box[3][1]
+                        exported_annot["footprint"] = abs(x1-x3)*abs(y2-y4)
+                        exported_annot["bbox"]= [(x1+x3)/2, (y2+y4)/2, abs(x1-x3), abs(y2-y4)]
+                        exported_annot["x"] = (x1+x3)/2
+                        exported_annot["y"] = (y2+y4)/2
                     exported_annot['geometries']['features'] = [newFeature]
                     res.append(deepcopy(exported_annot))
             else:
@@ -402,7 +440,18 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                 points = np.concatenate((points, [points[0]]))
                 newFeature = deepcopy(featureTemplate)
                 newFeature['geometry']['coordinates'].append(points.tolist())
-                newFeature['bound']['coordinates'].append(_makeBound(points))
+                bounding_box = _makeBound(points)
+                # [[min_x, min_y], [min_x, max_y], [max_x, max_y], [max_x, min_y],[min_x, min_y]]
+                newFeature['bound']['coordinates'].append(bounding_box)
+                if isSegment:
+                    x1 = bounding_box[0][0]
+                    x3 = bounding_box[2][0]
+                    y2 = bounding_box[1][1]
+                    y4 = bounding_box[3][1]
+                    exported_annot["footprint"] = abs(x1-x3)*abs(y2-y4)
+                    exported_annot["bbox"]= [(x1+x3)/2, (y2+y4)/2, abs(x1-x3), abs(y2-y4)]
+                    exported_annot["x"] = (x1+x3)/2
+                    exported_annot["y"] = (y2+y4)/2
                 exported_annot['geometries']['features'] = [newFeature]
                 area = _polygon_perimeter(points.tolist()) * mpp_x * slide_width
                 perimeter = _polygon_area(points.tolist()) * (mpp_x * slide_width)**2

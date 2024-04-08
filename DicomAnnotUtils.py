@@ -302,7 +302,7 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                 newFeature['bound']['type'] = "Point"
                 newFeature['bound']['coordinates'] = [center_x, center_y]
                 if isSegment:
-                        exported_annot["footprint"] = 4* major_axis_length*minor_axis_length,
+                        exported_annot["footprint"] = 4* major_axis_length*minor_axis_length*slide_height*slide_width
                         exported_annot["bbox"]= [center_x - major_axis_length, center_y - minor_axis_length,  center_x + major_axis_length, center_y + minor_axis_length]
                         exported_annot["x"] = center_x
                         exported_annot["y"] = center_y
@@ -347,7 +347,7 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                 newFeature['bound']['type'] = "Polygon"
                 newFeature['bound']['coordinates'] = [[x1,y1], [x2,y2], [x3,y3], [x4,y4], [x1,y1]]
                 if isSegment:
-                    exported_annot["footprint"] = abs(x1-x3)*abs(y2-y4)
+                    exported_annot["footprint"] = abs(x1-x3)*abs(y2-y4)*slide_height*slide_width
                     exported_annot["bbox"]= [(x1+x3)/2, (y2+y4)/2, abs(x1-x3), abs(y2-y4)]
                     exported_annot["x"] = (x1+x3)/2
                     exported_annot["y"] = (y2+y4)/2
@@ -407,7 +407,7 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                             x3 = bounding_box[2][0]
                             y2 = bounding_box[1][1]
                             y4 = bounding_box[3][1]
-                            exported_annot["footprint"] = abs(x1-x3)*abs(y2-y4)
+                            exported_annot["footprint"] = abs(x1-x3)*abs(y2-y4)*slide_width*slide_height
                             exported_annot["bbox"]= [(x1+x3)/2, (y2+y4)/2, abs(x1-x3), abs(y2-y4)]
                             exported_annot["x"] = (x1+x3)/2
                             exported_annot["y"] = (y2+y4)/2
@@ -429,7 +429,7 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                         x3 = bounding_box[2][0]
                         y2 = bounding_box[1][1]
                         y4 = bounding_box[3][1]
-                        exported_annot["footprint"] = abs(x1-x3)*abs(y2-y4)
+                        exported_annot["footprint"] = abs(x1-x3)*abs(y2-y4)*slide_height*slide_width
                         exported_annot["bbox"]= [(x1+x3)/2, (y2+y4)/2, abs(x1-x3), abs(y2-y4)]
                         exported_annot["x"] = (x1+x3)/2
                         exported_annot["y"] = (y2+y4)/2
@@ -449,7 +449,7 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                     x3 = bounding_box[2][0]
                     y2 = bounding_box[1][1]
                     y4 = bounding_box[3][1]
-                    exported_annot["footprint"] = abs(x1-x3)*abs(y2-y4)
+                    exported_annot["footprint"] = abs(x1-x3)*abs(y2-y4)*slide_height*slide_width
                     exported_annot["bbox"]= [(x1+x3)/2, (y2+y4)/2, abs(x1-x3), abs(y2-y4)]
                     exported_annot["x"] = (x1+x3)/2
                     exported_annot["y"] = (y2+y4)/2

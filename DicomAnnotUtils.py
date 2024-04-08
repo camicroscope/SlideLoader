@@ -338,7 +338,32 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                 res.append(deepcopy(exported_annot))
         elif x.GraphicType == "POLYGON" or x.GraphicType == "POLYLINE":
             m = getPointCoordinatesDataArray(x)
-            coordinates_array = (np.array(m).reshape(-1, 2)) / [slide_width,slide_height] # normalize coordinates for camicroscope
+            norm_width = slide_width
+            norm_height = slide_height
+            offset_x = 0
+            offset_y = 0
+            # if it's 3D then it's volume based?
+            if annot_ds.AnnotationCoordinateType == "3D":
+                # if there's common z, then we don't need to change anything
+                if not 'CommonZCoordinateValue' in x:
+                    # ignore z, get m in the right shape
+                    m = np.delete(m, np.arange(2, len(m), 3))
+                norm_width = slide_ds.ImagedVolumeWidth
+                norm_height = slide_ds.ImagedVolumeHeight
+                # if the orientation is flipped, flip it
+                # this is an insane heuristic, fix later
+                if sum(slide_ds.ImageOrientationSlide) <= -2:
+                    norm_width *= -1
+                    norm_height *= -1
+                if 'TotalPixelMatrixOriginSequence' in slide_ds and len(slide_ds.TotalPixelMatrixOriginSequence):
+                    offset_x = float(slide_ds.TotalPixelMatrixOriginSequence[0].XOffsetInSlideCoordinateSystem)
+                    offset_y = float(slide_ds.TotalPixelMatrixOriginSequence[0].XOffsetInSlideCoordinateSystem)
+                # then apply slide_ds.ImageOrientationSlide
+            # normalize coordinates for camicroscope
+            coordinates_array = (m.reshape(-1, 2))
+            coordinates_array = (coordinates_array - [offset_x, offset_y]) / [norm_width, norm_height]
+
+
             # split into different geometry objects Index List
             indexList = np.frombuffer(x.LongPrimitivePointIndexList, dtype=np.int32)
             #print("IndexList", indexList)

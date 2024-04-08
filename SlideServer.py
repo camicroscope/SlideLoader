@@ -803,7 +803,7 @@ def downloadRawDicom(source_url, study_uid, series_uid, instance_uid, output_fn)
 def doDicomSlideDownloads(source_url, study, series, instance_list, camic_slide_id):
     client = DICOMwebClient(source_url)
     for instance in instance_list:
-        app.logger.info("Working on instance: " +  instance)
+        app.logger.info("Working on slide instance: " +  instance)
         try:
             dest_directory = app.config['UPLOAD_FOLDER'] + _get_hash_prefix(study, length=10) + "_dicomweb"
             if not os.path.exists(dest_directory):
@@ -819,7 +819,7 @@ def doDicomSlideDownloads(source_url, study, series, instance_list, camic_slide_
 def doDicomAnnDownloads(source_url, study, series, instance_list):
     client = DICOMwebClient(source_url)
     for instance in instance_list:
-        app.logger.info("Working on instance: " + instance)
+        app.logger.info("Working on ann instance: " + instance)
         try:
             instance_resp = client.retrieve_instance(
                 study_instance_uid=study,

@@ -267,6 +267,8 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
         exported_annot['provenance']['analysis']['name'] = annot_ds.ContentLabel
         exported_annot['properties']['annotations']['notes'] = annot_ds.ContentDescription
         exported_annot['provenance']['analysis']['execution_id'] = "_DICOM_" + _generate_random_string(10)
+        if x.AnnotationGroupGenerationType == "AUTOMATIC":
+            exported_annot['provenance']['analysis']['source'] = 'computer'
         if slide_id:
             exported_annot['provenance']['image']['slide'] = slide_id
         exported_annot['provenance']['image']['dicom-ReferencedSOPClassUID'] = annot_ds.ReferencedImageSequence[0].ReferencedSOPClassUID

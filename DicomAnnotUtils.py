@@ -269,6 +269,7 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
         exported_annot['provenance']['analysis']['execution_id'] = "_DICOM_" + _generate_random_string(10)
         if x.AnnotationGroupGenerationType == "AUTOMATIC":
             exported_annot['provenance']['analysis']['source'] = 'computer'
+            exported_annot['provenance']['analysis']['computation'] = 'segmentation'
             isSegment = True
         if slide_id:
             exported_annot['provenance']['image']['slide'] = slide_id

@@ -298,7 +298,6 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                 newFeature['bound']['type'] = "Point"
                 newFeature['bound']['coordinates'] = [center_x, center_y]
                 exported_annot['geometries']['features'] = [newFeature]
-                exported_annot['provenance']['analysis']['execution_id'] = "_DICOM_" + _generate_random_string(10)
                 res.append(deepcopy(exported_annot))       
         elif x.GraphicType == "POINT":
             # sets of 1 point, 2 numbers
@@ -314,7 +313,6 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                 newFeature['bound']['type'] = "Point"
                 newFeature['bound']['coordinates'] = [center_x, center_y]
                 exported_annot['geometries']['features'] = [newFeature]
-                exported_annot['provenance']['analysis']['execution_id'] = "_DICOM_" + _generate_random_string(10)
                 res.append(deepcopy(exported_annot))  
         elif x.GraphicType == "RECTANGLE":
             m = getPointCoordinatesDataArray(x)
@@ -337,7 +335,6 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                 newFeature['bound']['type'] = "Polygon"
                 newFeature['bound']['coordinates'] = [[x1,y1], [x2,y2], [x3,y3], [x4,y4], [x1,y1]]
                 exported_annot['geometries']['features'] = [newFeature]
-                exported_annot['provenance']['analysis']['execution_id'] = "_DICOM_" + _generate_random_string(10)
                 res.append(deepcopy(exported_annot))
         elif x.GraphicType == "POLYGON" or x.GraphicType == "POLYLINE":
             m = getPointCoordinatesDataArray(x)
@@ -362,7 +359,6 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                         newFeature['geometry']['coordinates'].append(points.tolist())
                         newFeature['bound']['coordinates'].append(_makeBound(points))
                         exported_annot['geometries']['features'] = [newFeature]
-                        exported_annot['provenance']['analysis']['execution_id'] = "_DICOM_" + _generate_random_string(10)
                         res.append(deepcopy(exported_annot))
                     prevIndex = end_idx
                     # and the bound
@@ -373,7 +369,6 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                     newFeature = deepcopy(featureTemplate)
                     newFeature['geometry']['coordinates'].append(points.tolist())
                     newFeature['bound']['coordinates'].append(_makeBound(points))
-                    exported_annot['provenance']['analysis']['execution_id'] = "_DICOM_" + _generate_random_string(10)
                     exported_annot['geometries']['features'] = [newFeature]
                     res.append(deepcopy(exported_annot))
             else:
@@ -388,7 +383,6 @@ def dicomToCamic(annot_path, image_path, output_file, slide_id=None, file_mode=F
                 perimeter = _polygon_area(points.tolist()) * (mpp_x * slide_width)**2
                 exported_annot['properties']['annotations']['circumference'] = str(area)+ " μm"
                 exported_annot['properties']['annotations']['area'] = str(perimeter) + " μm²"
-                exported_annot['provenance']['analysis']['execution_id'] = "_DICOM_" + _generate_random_string(10)
                 res.append(deepcopy(exported_annot))
     
     if file_mode:

@@ -484,7 +484,6 @@ def demo():
     exit(0)
 
 if __name__ == "__main__":
-    demo()
     # Create argument parser
     parser = argparse.ArgumentParser(description='Convert annotations between CAMIC and DICOM')
 

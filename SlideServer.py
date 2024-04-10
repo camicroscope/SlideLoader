@@ -826,17 +826,15 @@ def doDicomAnnDownloads(source_url, study, series, instance_list):
                 series_instance_uid=series,
                 sop_instance_uid=instance
             )
+            dest_directory = app.config['UPLOAD_FOLDER'] + _get_hash_prefix(study, length=10) + "_dicomweb"
+            annot_path = dest_directory + "/" + instance + ".dcm"
+            downloadRawDicom(source_url, study, series, instance, annot_path)
             ref_series, ref_file = find_referenced_image(study, instance_resp)
             if ref_series:
                 slide_res = _findMatchingSlide(study, ref_series)
                 if slide_res:
                     slide_id = str(slide_res['_id'])
                     reference_slide_path = ref_file
-                    dest_directory = app.config['UPLOAD_FOLDER'] + _get_hash_prefix(study, length=10) + "_dicomweb"
-                    if not os.path.exists(dest_directory):
-                        os.makedirs(dest_directory)
-                    annot_path = dest_directory + "/" + instance + ".dcm"
-                    instance_resp.save_as(annot_path)
                     res = dicomToCamic(annot_path, reference_slide_path, None, source_url, slide_id, file_mode=False)
                     # load into camic
                     for doc in res:

@@ -14,7 +14,7 @@ featureTemplate = {
     "type": "Feature",
     "properties": {
         "style": {
-            "color":"#fc7e00",
+            "color":"#00fc2e",
             "lineJoin":"round",
             "lineCap":"round",
             "isFill":True

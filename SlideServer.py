@@ -715,8 +715,8 @@ def guiLocation():
     return flask.Response(json.dumps(res), status=200 if success else 500, mimetype='text/json')
 
 # things needed for just dicom routes
-app.config['MONGO_URI'] = "mongodb://ca-mongo:27017/"
-app.config['MONGO_DB'] = "camic"
+app.config['MONGO_URI'] = os.environ.get('MONGO_URI', 'mongodb://ca-mongo:27017/')
+app.config['MONGO_DB'] = os.environ.get('MONGO_DB', 'camic')
 
 mongo_client = pymongo.MongoClient(app.config['MONGO_URI'])
 mongo_db = mongo_client[app.config['MONGO_DB']]

@@ -245,14 +245,14 @@ def convert_ellipse(x1_major,y1_major,x2_major,y2_major,x1_minor,y1_minor,x2_min
     rotation = np.arctan2(y2_major - y1_major, x2_major - x1_major)
     return center_x, center_y, major_axis_length, minor_axis_length, rotation
 
-def dicomToCamic(annot_path, image_path, output_file, source_url=None, slide_id=None, file_mode=False):
-    slide_ds = pydicom.dcmread(image_path)
+def dicomToCamic(annot_path, image_dimensions, output_file, source_url=None, slide_id=None, file_mode=False):
+    # image_dimensions is either dimensions or a ds
     annot_ds = pydicom.dcmread(annot_path)
-    slide_width = slide_ds.TotalPixelMatrixColumns
-    slide_height = slide_ds.TotalPixelMatrixRows
+    slide_width = image_dimensions['TotalPixelMatrixColumns']
+    slide_height = image_dimensions['TotalPixelMatrixRows']
     # get physical resolution 
-    imaged_volume_width = slide_ds.ImagedVolumeWidth
-    imaged_volume_height = slide_ds.ImagedVolumeHeight
+    imaged_volume_width = image_dimensions['ImagedVolumeWidth']
+    imaged_volume_height = image_dimensions['ImagedVolumeHeight']
     pixel_size_x = imaged_volume_width / slide_width
     pixel_size_y = imaged_volume_height / slide_height
     # millimeters to microns
@@ -360,23 +360,6 @@ def dicomToCamic(annot_path, image_path, output_file, source_url=None, slide_id=
             norm_height = slide_height
             offset_x = 0
             offset_y = 0
-            # if it's 3D then it's volume based?
-            if annot_ds.AnnotationCoordinateType == "3D":
-                # if there's common z, then we don't need to change anything
-                if not 'CommonZCoordinateValue' in x:
-                    # ignore z, get m in the right shape
-                    m = np.delete(m, np.arange(2, len(m), 3))
-                norm_width = slide_ds.ImagedVolumeWidth
-                norm_height = slide_ds.ImagedVolumeHeight
-                # if the orientation is flipped, flip it
-                # this is an insane heuristic, fix later
-                if sum(slide_ds.ImageOrientationSlide) <= -2:
-                    norm_width *= -1
-                    norm_height *= -1
-                if 'TotalPixelMatrixOriginSequence' in slide_ds and len(slide_ds.TotalPixelMatrixOriginSequence):
-                    offset_x = float(slide_ds.TotalPixelMatrixOriginSequence[0].XOffsetInSlideCoordinateSystem)
-                    offset_y = float(slide_ds.TotalPixelMatrixOriginSequence[0].YOffsetInSlideCoordinateSystem)
-                # then apply slide_ds.ImageOrientationSlide
             # normalize coordinates for camicroscope
             coordinates_array = (m.reshape(-1, 2))
             coordinates_array = (coordinates_array - [offset_x, offset_y]) / [norm_width, norm_height]
@@ -480,7 +463,13 @@ def demo():
     annot_ds.save_as("test_out.dcm", write_like_original=False)
     print("now working backwards for test")
     annot_output = "./test_out.dcm"
-    dicomToCamic(annot_output, slide_file, "test_out2", slide_id='65fc65851200600012eb9222', file_mode=True)
+    image_dimensions = {}
+    ds = pydicom.dcmread(slide_file)
+    image_dimensions['TotalPixelMatrixColumns'] = ds.TotalPixelMatrixColumns
+    image_dimensions['TotalPixelMatrixRows'] = ds.TotalPixelMatrixRows
+    image_dimensions['ImagedVolumeWidth'] = ds.ImagedVolumeWidth
+    image_dimensions['ImagedVolumeHeight'] = ds.ImagedVolumeHeight
+    dicomToCamic(annot_output, image_dimensions, "test_out2", slide_id='65fc65851200600012eb9222', file_mode=True)
     exit(0)
 
 if __name__ == "__main__":
@@ -506,6 +495,12 @@ if __name__ == "__main__":
         annot_ds = camicToDicom(args.annot_file, args.slide_file)
         annot_ds.save_as(args.output_file, write_like_original=False)
     elif args.operation == 'import':
-        dicomToCamic(args.annot_file, args.slide_file, args.output_file, slide_id=slide_id, file_mode=True)
+        ds = pydicom.dcmread(args.slide_file)
+        dimensions = {}
+        dimensions['TotalPixelMatrixColumns'] = ds.TotalPixelMatrixColumns
+        dimensions['TotalPixelMatrixRows'] = ds.TotalPixelMatrixRows
+        dimensions['ImagedVolumeWidth'] = ds.ImagedVolumeWidth
+        dimensions['ImagedVolumeHeight'] = ds.ImagedVolumeHeight
+        dicomToCamic(args.annot_file, dimensions, args.output_file, slide_id=slide_id, file_mode=True)
     else:
         print("Invalid operation. Choose 'export' (camic_to_dicom) or 'import' (dicom_to_camic)")

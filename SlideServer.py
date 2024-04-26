@@ -824,6 +824,52 @@ def doDicomSlideDownloads(source_url, study, series, instance_list, camic_slide_
     camic_slide_id
 
 
+def levenshtein_distance(s1, s2):
+    """Calculate the Levenshtein distance between two strings."""
+    if len(s1) < len(s2):
+        return levenshtein_distance(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+    return previous_row[-1]
+
+def find_closest_sm_instance(source_url, study_uid, target_series_uid, target_instance_uid):
+    client = DICOMwebClient(source_url)
+    # Retrieve all instances within the specified study
+    instances = client.search_for_instances(study_instance_uid=study_uid)
+    sm_instances = [instance for instance in instances if instance.get('00080060', {}).get('Value', [None])[0] == 'SM']
+    # Initialize variables to store the closest match
+    closest_series_uid = None
+    closest_instance_uid = None
+    min_distance = float('inf')  # Initialize with a large value
+    
+    # Iterate over all instances and find the closest match
+    for instance in sm_instances:
+        series_uid = instance['0020000E']['Value'][0]  # Series Instance UID
+        instance_uid = instance['00080018']['Value'][0]  # SOP Instance UID
+        
+        # Calculate the Levenshtein distance between the target and current series and instance UIDs
+        series_distance = levenshtein_distance(target_series_uid, series_uid)
+        instance_distance = levenshtein_distance(target_instance_uid, instance_uid)
+        total_distance = series_distance + instance_distance
+        
+        # Check if the current instance is closer than the previous closest match
+        if total_distance < min_distance:
+            min_distance = total_distance
+            closest_series_uid = series_uid
+            closest_instance_uid = instance_uid
+    
+    return closest_series_uid, closest_instance_uid
+
+
 def get_reference_image_dimensions(source_url, ann_study, ann_series, ann_instance):
     try:
         client = DICOMwebClient(source_url)
@@ -836,23 +882,43 @@ def get_reference_image_dimensions(source_url, ann_study, ann_series, ann_instan
         # study is the same 
         image_study = ann_study
         image_instance = ann_metadata['00081140']['Value'][0]['00081155']['Value'][0]
-        images_series = ann_metadata['00081115']['Value'][0]['0020000E']['Value'][0]
-        slide_metadata = client.retrieve_instance_metadata(
-            study_instance_uid=image_study,
-            series_instance_uid=images_series,
-            sop_instance_uid=image_instance
-        )
+        image_series = ann_metadata['00081115']['Value'][0]['0020000E']['Value'][0]
+        slide_metadata = None
+        try:
+            slide_metadata = client.retrieve_instance_metadata(
+                study_instance_uid=image_study,
+                series_instance_uid=image_series,
+                sop_instance_uid=image_instance
+            )
+        except BaseException as e:
+            app.logger.exception(e)
+            # for some reason, exact matches don't seem to be present. find "closest" one
+            close_series, close_instance = find_closest_sm_instance(source_url,image_study,image_series,image_instance)
+            slide_metadata = client.retrieve_instance_metadata(
+                study_instance_uid=image_study,
+                series_instance_uid=close_series,
+                sop_instance_uid=close_instance
+            )
+            app.logger.info("Couldn't find : " + image_study + " " + image_series + " " + image_instance)
+            app.logger.info("Instead using : " + image_study + " " + close_series + " " + close_instance)
+            image_series = close_series
         response = {}
-        response['Imaged_Volume_Width'] = slide_metadata['00480001']['Value'][0]
-        response['Imaged_Volume_Height'] = slide_metadata['00480001']['Value'][0]
+        response['ImagedVolumeWidth'] = slide_metadata['00480001']['Value'][0]
+        response['ImagedVolumeHeight'] = slide_metadata['00480001']['Value'][0]
         response['TotalPixelMatrixColumns'] = slide_metadata['00480006']['Value'][0]
         response['TotalPixelMatrixRows'] = slide_metadata['00480007']['Value'][0]
-        return images_series, response
+        return image_series, response
 
         # use the slide metadata to get the dimensions, return them
-    except:
+    except BaseException as e:
+        app.logger.exception(e)
         # get the series id and ds another way, through a file search.
-        return find_referenced_image_by_files(source_url, ann_study, ann_metadata)
+        ann_ds = client.retrieve_instance(
+            study_instance_uid=ann_study,
+            series_instance_uid=ann_series,
+            sop_instance_uid=ann_instance
+        )
+        return find_referenced_image_by_files(source_url, ann_study, ann_ds)
 
 def doDicomAnnDownloads(source_url, study, series, instance_list):
     client = DICOMwebClient(source_url)
@@ -869,7 +935,7 @@ def doDicomAnnDownloads(source_url, study, series, instance_list):
             downloadRawDicom(source_url, study, series, instance, annot_path)
             ref_series, dimensions = get_reference_image_dimensions(source_url, study, series, instance)
             if ref_series:
-                slide_res = _findMatchingSlide(source_url, study, series)
+                slide_res = _findMatchingSlide(source_url, study, ref_series)
                 if slide_res:
                     slide_id = str(slide_res['_id'])
                     res = dicomToCamic(annot_path, dimensions, None, source_url, slide_id, file_mode=False)

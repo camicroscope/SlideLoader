@@ -2,9 +2,11 @@ import base64
 import json
 import os
 import random
+import traceback
 import shutil
 import string
 import sys
+from datetime import datetime
 import pyvips
 import os
 from spritemaker import createSpritesheet
@@ -12,6 +14,7 @@ from PIL import Image
 import urllib
 import flask
 import flask_cors
+import threading
 from flask import request
 from image_reader import construct_reader, suggest_folder_name
 from werkzeug.utils import secure_filename
@@ -25,6 +28,18 @@ from gdrive_utils import getFileFromGdrive, gDriveGetFile, checkDownloadStatus
 from threading import Thread
 from file_extensions import ALLOWED_EXTENSIONS
 from time import sleep
+import hashlib
+from urllib.parse import urlparse
+from dicomweb_client.api import DICOMwebClient
+
+from DicomAnnotUtils import dicomToCamic
+import pydicom
+
+# mongo stuff
+import pymongo
+from bson.objectid import ObjectId
+
+
 
 try:
     from io import BytesIO
@@ -37,16 +52,17 @@ flask_cors.CORS(app)
 # dataset storage location for the workbench tasks 
 app.config['DATASET_FOLDER'] = "/images/dataset/"
 
-#creating a uploading folder if it doesn't exist
-if not os.path.exists('/images/uploading/'):
-    os.mkdir('/images/uploading')
-
 # where to put and get slides
 app.config['UPLOAD_FOLDER'] = "/images/"
 app.config['TEMP_FOLDER'] = "/images/uploading/"
 app.config['TOKEN_SIZE'] = 10
 app.config['SECRET_KEY'] = os.urandom(24)
 app.config['ROI_FOLDER'] = "/images/roiDownload"
+
+#creating a uploading folder if it doesn't exist
+if not os.path.exists(app.config['TEMP_FOLDER']):
+    os.mkdir(app.config['TEMP_FOLDER'])
+
 
 # should be used instead of secure_filename to create new files whose extensions are important.
 # use secure_filename to access previous files.
@@ -94,8 +110,9 @@ def getThumbnail(filename, size=50):
         return {"error": "No such file"}
     try:
         slide = construct_reader(filepath)
-    except BaseException as e:
-        # here, e has attribute "error"
+    except Exception as e:
+        app.logger.error(f"An error occurred: {type(e).__name__}: {e}")
+        app.logger.debug(traceback.format_exc())
         return e
 
     try:
@@ -696,3 +713,317 @@ def guiLocation():
 
     success = "port" in res and "ui_port" in res
     return flask.Response(json.dumps(res), status=200 if success else 500, mimetype='text/json')
+
+# things needed for just dicom routes
+app.config['MONGO_URI'] = os.environ.get('MONGO_URI', 'mongodb://ca-mongo:27017/')
+app.config['MONGO_DB'] = os.environ.get('MONGO_DB', 'camic')
+
+mongo_client = pymongo.MongoClient(app.config['MONGO_URI'])
+mongo_db = mongo_client[app.config['MONGO_DB']]
+
+# find if a slide already exists for this
+def _findMatchingSlide(source_url, study, series):
+    query = {"dicom-source-url": source_url, "study": study, "series": series}
+    return mongo_db['slide'].find_one(query)
+    
+def _getSlide(slide_id):
+    object_id = ObjectId(slide_id)
+    result = mongo_db['slide'].find_one({"_id": object_id})
+    return result
+
+def _setSlideStatus(slide_id, status):
+    object_id = ObjectId(slide_id)
+    result = mongo_db['slide'].update_one({"_id": object_id}, {"$set": {"status": status}})
+    return result
+
+def _add_slide(document):
+    insert_result = mongo_db['slide'].insert_one(document)
+    return str(insert_result.inserted_id)
+
+def _add_mark(document):
+    insert_result = mongo_db['mark'].insert_one(document)
+    return str(insert_result.inserted_id)
+
+
+def _get_hash_prefix(input_string, length=8):
+    algorithm='sha256'
+    input_bytes = input_string.encode('utf-8')
+    hash_obj = hashlib.new(algorithm)
+    hash_obj.update(input_bytes)
+    full_hash = hash_obj.hexdigest()
+    hash_prefix = full_hash[:length]
+    return hash_prefix
+
+def find_referenced_image_by_files(source_url, study, ds):
+    instance_uid = ds.ReferencedImageSequence[0].ReferencedSOPInstanceUID
+    study_directory = app.config['UPLOAD_FOLDER'] + _get_hash_prefix(source_url + "~" + study, length=10) + "_dicomweb"
+    # Traverse through the study directory
+    for root, dirs, files in os.walk(study_directory):
+        for file_name in files:
+            if file_name.endswith('.dcm'):
+                file_path = os.path.join(root, file_name)
+                ds = pydicom.dcmread(file_path)
+                if ds.SOPInstanceUID == instance_uid:
+                    # Found the instance, return its SeriesInstanceUID
+                    dimensions = {}
+                    dimensions['TotalPixelMatrixColumns'] = ds.TotalPixelMatrixColumns
+                    dimensions['TotalPixelMatrixRows'] = ds.TotalPixelMatrixRows
+                    dimensions['ImagedVolumeWidth'] = ds.ImagedVolumeWidth
+                    dimensions['ImagedVolumeHeight'] = ds.ImagedVolumeHeight
+                    return ds.SeriesInstanceUID, dimensions
+
+    # If the instance is not found in the study
+    return None, None
+
+def downloadRawDicom(source_url, study_uid, series_uid, instance_uid, output_fn):
+    instance_url = source_url + f"/studies/{study_uid}/series/{series_uid}/instances/{instance_uid}"
+    response = requests.get(instance_url, stream=True)
+    if response.status_code == 200:
+        with open(output_fn, "wb") as file:
+            content_type_header = response.headers.get('Content-Type')
+            boundary = content_type_header.split('boundary=')[1].split(';')[0].strip()
+            app.logger.info("Working on file: " +  output_fn)
+            dicom_started = False
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    if not dicom_started:
+                        # Check if the chunk contains "\r\n\r\n""
+                        if b"\r\n\r\n" in chunk:
+                            # Find the position of "\r\n\r\n"" in the chunk
+                            start_idx = chunk.find(b"\r\n\r\n")
+                            file.write(chunk[start_idx + 4:])
+                            # Set dicom_started to True
+                            dicom_started = True
+                    else:
+                        # Write entire chunk to the file
+                        file.write(chunk)
+            # remove the trailing multipart stuff
+            file.seek(-len(boundary) - 6, 2)  # Move the file pointer to before the boundary
+            file.truncate()  # Truncate the file at the current position
+        
+        print("DICOM instance saved successfully.")
+    else:
+        print(f"Failed to retrieve DICOM instance. Status code: {response.status_code}")
+
+# dicom web based routes
+
+def doDicomSlideDownloads(source_url, study, series, instance_list, camic_slide_id):
+    for instance in instance_list:
+        app.logger.info("Working on slide instance: " +  instance)
+        try:
+            dest_directory = app.config['UPLOAD_FOLDER'] + _get_hash_prefix(source_url + "~" + study, length=10) + "_dicomweb"
+            if not os.path.exists(dest_directory):
+                os.makedirs(dest_directory)
+            output_fn = dest_directory + "/" + instance + ".dcm"
+            downloadRawDicom(source_url, study, series, instance, output_fn)
+        except Exception as e:
+            app.logger.error(f"An error occurred: {type(e).__name__}: {e}")
+            app.logger.debug(traceback.format_exc())
+    # we're done, update the camic slide instance to done
+    _setSlideStatus(camic_slide_id, "done")
+    camic_slide_id
+
+
+def levenshtein_distance(s1, s2):
+    """Calculate the Levenshtein distance between two strings."""
+    if len(s1) < len(s2):
+        return levenshtein_distance(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+    return previous_row[-1]
+
+def find_closest_sm_instance(source_url, study_uid, target_series_uid, target_instance_uid):
+    client = DICOMwebClient(source_url)
+    # Retrieve all instances within the specified study
+    instances = client.search_for_instances(study_instance_uid=study_uid)
+    sm_instances = [instance for instance in instances if instance.get('00080060', {}).get('Value', [None])[0] == 'SM']
+    # Initialize variables to store the closest match
+    closest_series_uid = None
+    closest_instance_uid = None
+    min_distance = float('inf')  # Initialize with a large value
+    
+    # Iterate over all instances and find the closest match
+    for instance in sm_instances:
+        series_uid = instance['0020000E']['Value'][0]  # Series Instance UID
+        instance_uid = instance['00080018']['Value'][0]  # SOP Instance UID
+        
+        # Calculate the Levenshtein distance between the target and current series and instance UIDs
+        series_distance = levenshtein_distance(target_series_uid, series_uid)
+        instance_distance = levenshtein_distance(target_instance_uid, instance_uid)
+        total_distance = series_distance + instance_distance
+        
+        # Check if the current instance is closer than the previous closest match
+        if total_distance < min_distance:
+            min_distance = total_distance
+            closest_series_uid = series_uid
+            closest_instance_uid = instance_uid
+    
+    return closest_series_uid, closest_instance_uid
+
+
+def get_reference_image_dimensions(source_url, ann_study, ann_series, ann_instance):
+    try:
+        client = DICOMwebClient(source_url)
+        ann_metadata = client.retrieve_instance_metadata(
+            study_instance_uid=ann_study,
+            series_instance_uid=ann_series,
+            sop_instance_uid=ann_instance
+        )
+        # use the metadata for the annotation to get the identifiers then metadata for the slide
+        # study is the same 
+        image_study = ann_study
+        image_instance = ann_metadata['00081140']['Value'][0]['00081155']['Value'][0]
+        image_series = ann_metadata['00081115']['Value'][0]['0020000E']['Value'][0]
+        slide_metadata = None
+        try:
+            slide_metadata = client.retrieve_instance_metadata(
+                study_instance_uid=image_study,
+                series_instance_uid=image_series,
+                sop_instance_uid=image_instance
+            )
+        except BaseException as e:
+            app.logger.exception(e)
+            # for some reason, exact matches don't seem to be present. find "closest" one
+            close_series, close_instance = find_closest_sm_instance(source_url,image_study,image_series,image_instance)
+            slide_metadata = client.retrieve_instance_metadata(
+                study_instance_uid=image_study,
+                series_instance_uid=close_series,
+                sop_instance_uid=close_instance
+            )
+            app.logger.info("Couldn't find : " + image_study + " " + image_series + " " + image_instance)
+            app.logger.info("Instead using : " + image_study + " " + close_series + " " + close_instance)
+            image_series = close_series
+        response = {}
+        response['ImagedVolumeWidth'] = slide_metadata['00480001']['Value'][0]
+        response['ImagedVolumeHeight'] = slide_metadata['00480001']['Value'][0]
+        response['TotalPixelMatrixColumns'] = slide_metadata['00480006']['Value'][0]
+        response['TotalPixelMatrixRows'] = slide_metadata['00480007']['Value'][0]
+        return image_series, response
+
+        # use the slide metadata to get the dimensions, return them
+    except BaseException as e:
+        app.logger.exception(e)
+        # get the series id and ds another way, through a file search.
+        ann_ds = client.retrieve_instance(
+            study_instance_uid=ann_study,
+            series_instance_uid=ann_series,
+            sop_instance_uid=ann_instance
+        )
+        return find_referenced_image_by_files(source_url, ann_study, ann_ds)
+
+def doDicomAnnDownloads(source_url, study, series, instance_list):
+    client = DICOMwebClient(source_url)
+    for instance in instance_list:
+        app.logger.info("Working on ann instance: " + instance)
+        try:
+            instance_resp = client.retrieve_instance(
+                study_instance_uid=study,
+                series_instance_uid=series,
+                sop_instance_uid=instance
+            )
+            dest_directory = app.config['UPLOAD_FOLDER'] + _get_hash_prefix(source_url + "~" + study, length=10) + "_dicomweb"
+            annot_path = dest_directory + "/" + instance + ".dcm"
+            downloadRawDicom(source_url, study, series, instance, annot_path)
+            ref_series, dimensions = get_reference_image_dimensions(source_url, study, series, instance)
+            if ref_series:
+                slide_res = _findMatchingSlide(source_url, study, ref_series)
+                if slide_res:
+                    slide_id = str(slide_res['_id'])
+                    res = dicomToCamic(annot_path, dimensions, None, source_url, slide_id, file_mode=False)
+                    # load into camic
+                    for doc in res:
+                        _add_mark(doc)
+                else:
+                    # get the slide then try this again
+                    getDicomSmThenAnn(source_url, study, ref_series, study, series)
+            else:
+                e = {"err": "err", "msg": "couldn't find the reference"}
+                app.logger.info("err: " + str(e))
+                return e 
+        except Exception as e:
+            app.logger.error(f"An error occurred: {type(e).__name__}: {e}")
+            app.logger.debug(traceback.format_exc())
+
+
+
+def getDicomSeriesANN(source_url, study, series):
+    client = DICOMwebClient(source_url)
+    instances = client.search_for_instances(
+        study_instance_uid=study,
+        series_instance_uid=series
+    )
+    instance_list = [x['00080018']['Value'][0] for x in instances]
+    load_thread = threading.Thread(target=doDicomAnnDownloads, args=(source_url, study, series, instance_list))
+    load_thread.start()
+
+def getDicomSeriesSM(source_url, study, series, blocking=False):
+    # check if the slide object matching already exists, returning it if so.
+    matching_slide = _findMatchingSlide(source_url, study, series)
+    if matching_slide:
+        return {'status': 'already exists', 'slide_id': str(matching_slide["_id"])}
+    client = DICOMwebClient(source_url)
+    instances = client.search_for_instances(
+        study_instance_uid=study,
+        series_instance_uid=series
+    )
+    instance_list = [x['00080018']['Value'][0] for x in instances]
+
+    # do the download
+    dest_directory = app.config['UPLOAD_FOLDER'] + _get_hash_prefix(source_url + "~" + study, length=10) + "_dicomweb"
+    if not os.path.exists(dest_directory):
+        os.makedirs(dest_directory)
+    first_file = dest_directory + "/" + instance_list[0] + ".dcm"
+    # if the slide object does not exist, make it using the first instance file name with in progress status
+    current_time = datetime.now()
+    formatted_time = current_time.strftime("%m/%d/%Y, %I:%M:%S %p")
+    new_slide = {
+        'location': first_file,
+        'filepath': instance_list[0] + ".dcm",
+        'upload_date': formatted_time ,
+        'creator': "DicomWebImport",
+        'dicom-source-url': source_url,
+        'study': study,
+        'series': series,
+        'specimen': '',
+        'status': 'loading',
+        'name': _get_hash_prefix(study + "~" + series, length=12)
+    }
+    slide_id = _add_slide(new_slide)
+    if blocking:
+        doDicomSlideDownloads(source_url, study, series, instance_list, slide_id)
+    else:
+        load_thread = threading.Thread(target=doDicomSlideDownloads, args=(source_url, study, series, instance_list, slide_id))
+        load_thread.start()
+    return slide_id
+
+def getDicomSmThenAnn(source_url, slide_study, slide_series, annot_study, annot_series):
+    slide_id = getDicomSeriesSM(source_url, slide_study, slide_series, blocking=True)
+    # slide is loaded, so just eventually load the annotations
+    getDicomSeriesANN(source_url, annot_study, annot_series)
+
+@app.route('/dicomWeb/importSeries', methods=['POST'])
+def dicom_import():
+    try:
+        data = flask.request.get_json()
+        source_url = data['source_url']
+        study = data['study']
+        series = data['series']
+        modality = data['modality']
+        if modality == "ANN":
+            slide_id =  getDicomSeriesANN(source_url, study, series)
+            return({"modality": modality, "status": "starting"})
+        else:
+            slide_id = getDicomSeriesSM(source_url, study, series, blocking=False)
+            return({"modality": modality, 'slide_id': slide_id})
+    except Exception as e:
+        app.logger.error(f"An error occurred: {type(e).__name__}: {e}")
+        app.logger.debug(traceback.format_exc())

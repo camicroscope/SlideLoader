@@ -30,6 +30,9 @@ ENV BFBRIDGE_LOGLEVEL=WARN
 
 RUN mkdir -p /images/uploading
 
+COPY openslide_copy.sh .
+RUN bash openslide_copy.sh
+
 COPY requirements.txt .
 RUN pip3 install -r requirements.txt --break-system-packages
 

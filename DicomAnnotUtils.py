@@ -134,7 +134,7 @@ def create_annotation_dicom(annot_arrays, slide_file, geojson):
 
     # add the annotation data
     ds.AnnotationGroupSequence = []
-    i = 0
+    i = 1
     idx = 1
     point_indices = []
     # make the array first?

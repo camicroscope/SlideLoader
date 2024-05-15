@@ -807,10 +807,10 @@ def OLDdownloadRawDicom(source_url, study_uid, series_uid, instance_uid, output_
     else:
         print(f"Failed to retrieve DICOM instance. Status code: {response.status_code}")
 
-def doDownloadRawDicom(source_url, study_uid, series_uid, instance_uid, output_fn):
+def downloadRawDicom(source_url, study_uid, series_uid, instance_uid, output_fn):
     asyncio.run(downloadRawDicom(source_url, study_uid, series_uid, instance_uid, output_fn))
 
-async def downloadRawDicom(source_url, study_uid, series_uid, instance_uid, output_fn):
+async def doDownloadRawDicom(source_url, study_uid, series_uid, instance_uid, output_fn):
     instance_url = source_url + f"/studies/{study_uid}/series/{series_uid}/instances/{instance_uid}"
     async with aiohttp.ClientSession(trust_env=True) as session:
         async with session.get(instance_url) as resp:

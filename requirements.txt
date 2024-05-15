@@ -14,3 +14,4 @@ pycurl
 pydicom
 dicomweb-client
 pymongo
+aiohttp

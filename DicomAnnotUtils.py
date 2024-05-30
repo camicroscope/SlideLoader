@@ -378,13 +378,15 @@ def dicomToCamic(annot_path, image_dimensions, output_file, source_url=None, sli
                     #print("prev", prevIndex, "idx", idx)
                     # make a thing 
                     points = coordinates_array[prevIndex:end_idx, :]
-                    points = np.concatenate((points, [points[0]]))
+                    polygon = np.concatenate((points, [points[0]]))
                     #print('len(points)', len(points))
                     if len(points) > 0:
                         newFeature = deepcopy(featureTemplate)
                         if x.GraphicType == "POLYLINE":
                             newFeature['geometry']['type'] = "Polyline"
-                        newFeature['geometry']['coordinates'].append(points.tolist())
+                            newFeature['geometry']['coordinates'].append(points.tolist())
+                        else:
+                            newFeature['geometry']['coordinates'].append(polygon.tolist())
                         bounding_box = _makeBound(points)
                         # [[min_x, min_y], [min_x, max_y], [max_x, max_y], [max_x, min_y],[min_x, min_y]]
                         newFeature['bound']['coordinates'].append(bounding_box)
@@ -403,12 +405,14 @@ def dicomToCamic(annot_path, image_dimensions, output_file, source_url=None, sli
                     # and the bound
                 # then add the last one
                 points = coordinates_array[prevIndex:, :]
-                points = np.concatenate((points, [points[0]]))
+                polygon = np.concatenate((points, [points[0]]))
                 if len(points) > 0:
                     newFeature = deepcopy(featureTemplate)
                     if x.GraphicType == "POLYLINE":
                         newFeature['geometry']['type'] = "Polyline"
-                    newFeature['geometry']['coordinates'].append(points.tolist())
+                        newFeature['geometry']['coordinates'].append(points.tolist())
+                    else:
+                        newFeature['geometry']['coordinates'].append(polygon.tolist())
                     bounding_box = _makeBound(points)
                     # [[min_x, min_y], [min_x, max_y], [max_x, max_y], [max_x, min_y],[min_x, min_y]]
                     newFeature['bound']['coordinates'].append(bounding_box)
@@ -426,11 +430,13 @@ def dicomToCamic(annot_path, image_dimensions, output_file, source_url=None, sli
             else:
                 # whole thing at once. Only do area and circumference here.
                 points = coordinates_array
-                points = np.concatenate((points, [points[0]]))
+                polygon = np.concatenate((points, [points[0]]))
                 newFeature = deepcopy(featureTemplate)
                 if x.GraphicType == "POLYLINE":
                     newFeature['geometry']['type'] = "Polyline"
-                newFeature['geometry']['coordinates'].append(points.tolist())
+                    newFeature['geometry']['coordinates'].append(points.tolist())
+                else:
+                    newFeature['geometry']['coordinates'].append(polygon.tolist())
                 bounding_box = _makeBound(points)
                 # [[min_x, min_y], [min_x, max_y], [max_x, max_y], [max_x, min_y],[min_x, min_y]]
                 newFeature['bound']['coordinates'].append(bounding_box)

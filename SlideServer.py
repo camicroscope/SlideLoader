@@ -41,7 +41,7 @@ import pydicom
 import pymongo
 from bson.objectid import ObjectId
 
-
+from collections import defaultdict
 
 try:
     from io import BytesIO
@@ -61,6 +61,7 @@ app.config['TOKEN_SIZE'] = 10
 app.config['SECRET_KEY'] = os.urandom(24)
 app.config['ROI_FOLDER'] = "/images/roiDownload"
 
+
 download_folder = os.getenv('DOWNLOAD_FOLDER', app.config['UPLOAD_FOLDER'])
 app.config['DOWNLOAD_FOLDER'] = download_folder
 
@@ -70,6 +71,18 @@ if os.getenv("ALLOW_DOWNLOAD_ZIP") == "True":
 #creating a uploading folder if it doesn't exist
 if not os.path.exists(app.config['TEMP_FOLDER']):
     os.mkdir(app.config['TEMP_FOLDER'])
+
+
+# Per-token locks to prevent parallel/out-of-order chunk corruption
+token_locks = defaultdict(threading.Lock)
+# Move token-masking helper to module level (used for logs; keeps request handlers small)
+def _mask_token(token, keep_prefix=2, keep_suffix=2):
+    try:
+        if not token or len(token) <= keep_prefix + keep_suffix:
+            return "****"
+        return token[:keep_prefix] + "*" * (len(token) - keep_prefix - keep_suffix) + token[-keep_suffix:]
+    except Exception:
+        return "****"
 
 
 # should be used instead of secure_filename to create new files whose extensions are important.
@@ -172,24 +185,47 @@ def start_upload():
 @app.route('/upload/continue/<token>', methods=['POST'])
 def continue_file(token):
     token = secure_filename(token)
-    print(token, file=sys.stderr)
+    masked = _mask_token(token)
+    app.logger.info(f"[upload] continue called for token={masked}")
+
     tmppath = os.path.join(app.config['TEMP_FOLDER'], token)
-    if os.path.isfile(tmppath):
-        body = flask.request.get_json()
-        if not body:
-            return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400, mimetype='text/json')
-        offset = body['offset'] or 0
-        if not 'data' in body:
-            return flask.Response(json.dumps({"error": "File data not found in body"}), status=400, mimetype='text/json')
-        else:
-            data = base64.b64decode(body['data'])
-            f = open(tmppath, "ab")
-            f.seek(int(offset))
-            f.write(data)
-            f.close()
-            return flask.Response(json.dumps({"status": "OK"}), status=200, mimetype='text/json')
-    else:
+    if not os.path.isfile(tmppath):
         return flask.Response(json.dumps({"error": "Token Not Recognised"}), status=400, mimetype='text/json')
+
+    body = flask.request.get_json()
+    if not body:
+        return flask.Response(json.dumps({"error": "Missing JSON body"}), status=400, mimetype='text/json')
+    
+    # Validate offset presence and type
+    try:
+        offset = int(body.get('offset', 0))
+    except:
+        return flask.Response(json.dumps({"error": "Invalid offset"}), status=400, mimetype='text/json')
+
+    if 'data' not in body:
+        return flask.Response(json.dumps({"error": "File data not found in body"}), status=400, mimetype='text/json')
+
+    # decode payload
+    try:
+        data = base64.b64decode(body['data'])
+    except Exception:
+        return flask.Response(json.dumps({"error": "Invalid base64 data"}), status=400, mimetype='text/json')
+
+    # Acquire per-token lock and validate the offset before writing.
+    lock = token_locks[token]
+    with lock:
+        current_size = os.path.getsize(tmppath)
+
+        if offset != current_size:
+            return flask.Response(json.dumps({
+                "error": "Offset mismatch",
+                "expected_offset": current_size
+            }), status=409, mimetype='text/json')
+
+        with open(tmppath, "ab") as f:
+            f.write(data)
+
+    return flask.Response(json.dumps({"status": "OK", "written": len(data)}), status=200, mimetype='text/json')
 
 
 # end the upload, by removing the in progress indication; locks further modification
@@ -202,6 +238,39 @@ def finish_upload(token):
     tmppath = os.path.join(app.config['TEMP_FOLDER'], token)
     if not os.path.isfile(tmppath):
         return flask.Response(json.dumps({"error": "Token Not Recognised"}), status=400, mimetype='text/json')
+    
+    # Optional client-provided integrity hints
+    expected_sha256 = body.get('sha256')
+    expected_size = body.get('size')
+
+    # Quick size check if client provided expected size
+    if expected_size is not None:
+        try:
+            expected_size = int(expected_size)
+            actual_size = os.path.getsize(tmppath)
+            if actual_size != expected_size:
+                app.logger.warning(f"[upload/finish] size mismatch token={token} expected={expected_size} actual={actual_size}")
+                return flask.Response(json.dumps({"error": "Size mismatch", "expected_size": expected_size, "actual_size": actual_size}), status=409, mimetype='text/json')
+        except Exception:
+            # ignore parse errors, fall through to normal flow
+            pass
+
+    # Optional SHA256 verification
+    if expected_sha256:
+        try:
+            h = hashlib.sha256()
+            with open(tmppath, "rb") as f:
+                for chunk in iter(lambda: f.read(8192), b""):
+                    h.update(chunk)
+            actual_sha = h.hexdigest().upper()
+            provided = expected_sha256.upper()
+            if actual_sha != provided:
+                app.logger.warning(f"[upload/finish] sha mismatch token={token} provided={provided} actual={actual_sha}")
+                return flask.Response(json.dumps({"error": "SHA256 mismatch", "expected_sha256": provided, "actual_sha256": actual_sha}), status=400, mimetype='text/json')
+        except Exception as e:
+            app.logger.error(f"[upload/finish] sha computation failed token={token}: {e}")
+            return flask.Response(json.dumps({"error": "Failed to verify file integrity", "detail": str(e)}), status=500, mimetype='text/json')
+
     filename = body['filename']
     if filename and verify_extension(filename):
         filename = secure_filename_strict(filename)
@@ -215,7 +284,11 @@ def finish_upload(token):
             relpath = filename
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], relpath)
         if not os.path.isfile(filepath):
-            shutil.move(tmppath, filepath)
+            try:
+                shutil.move(tmppath, filepath)
+            except Exception as e:
+                app.logger.error(f"[upload/finish] move failed token={token}: {e}")
+                return flask.Response(json.dumps({"error": "Failed to move finished upload", "detail": str(e)}), status=500, mimetype='text/json')
             return flask.Response(json.dumps({"ended": token, "filepath": filepath, "filename": filename, "relpath": relpath}), status=200, mimetype='text/json')
         else:
             return flask.Response(json.dumps({"error": "File with name '" + filename + "' already exists", "filepath": filepath, "filename": filename}), status=400, mimetype='text/json')
